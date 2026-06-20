@@ -1,6 +1,7 @@
 import { DEFAULT_TAP_SETTINGS, type FrameSizeMs, type TapConfig, type TapId } from "@/config/taps";
 import { buildTapSocketUrl } from "@/lib/audio/connection-url";
 import { packFrame, unpackFrame } from "@/lib/audio/frame-codec";
+import { clearTapSignalFrame, writeTapSignalFrame } from "@/lib/audio/tap-signal-store";
 import type { BufferMode, EngineStatus, TapMetricsUpdate, TapRuntimeSettings } from "@/lib/audio/types";
 
 type BrowserWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
@@ -25,7 +26,6 @@ type TapRuntime = TapConfig & {
   received: number;
   lastSeqSeen: number;
   lost: number;
-  level: number;
 };
 
 type AudioEngineOptions = {
@@ -106,7 +106,6 @@ export class AudioEngine {
         received: 0,
         lastSeqSeen: -1,
         lost: 0,
-        level: 0,
       });
     }
   }
@@ -368,15 +367,17 @@ export class AudioEngine {
 
     socket.onopen = () => {
       tap.connected = true;
-      this.emitTapMetrics(tap, true);
+      this.emitTapMetrics(tap);
     };
     socket.onclose = () => {
       tap.connected = false;
-      this.emitTapMetrics(tap, true);
+      clearTapSignalFrame(tap.id);
+      this.emitTapMetrics(tap);
     };
     socket.onerror = () => {
       tap.connected = false;
-      this.emitTapMetrics(tap, true);
+      clearTapSignalFrame(tap.id);
+      this.emitTapMetrics(tap);
     };
     socket.onmessage = (event) => {
       if (event.data instanceof ArrayBuffer) {
@@ -413,8 +414,8 @@ export class AudioEngine {
     tap.gain = null;
     tap.panner = null;
     tap.feedbackFrame = null;
-    tap.level = 0;
-    this.emitTapMetrics(tap, true);
+    clearTapSignalFrame(tap.id);
+    this.emitTapMetrics(tap);
   }
 
   private sendFrameToEnabledTaps(frame: Float32Array) {
@@ -460,8 +461,7 @@ export class AudioEngine {
     }
     tap.lastSeqSeen = seq;
     tap.received += 1;
-    tap.level = Math.max(this.peakLevel(frame), tap.level * 0.72);
-    this.emitTapSignal(tap);
+    writeTapSignalFrame(tap.id, frame);
 
     if (tap.player) {
       const playbackFrame = new Float32Array(frame);
@@ -506,17 +506,10 @@ export class AudioEngine {
     this.vuFrame = window.requestAnimationFrame(loop);
   }
 
-  private emitTapMetrics(tap: TapRuntime, includeLevel = false) {
+  private emitTapMetrics(tap: TapRuntime) {
     this.onTapMetrics(tap.id, {
       connected: tap.connected,
-      ...(includeLevel ? { level: tap.connected ? Math.min(1, tap.level * 1.4) : 0 } : {}),
       rttMs: tap.rttEwma,
-    });
-  }
-
-  private emitTapSignal(tap: TapRuntime) {
-    this.onTapMetrics(tap.id, {
-      level: tap.connected ? Math.min(1, tap.level * 1.4) : 0,
     });
   }
 
@@ -546,11 +539,5 @@ export class AudioEngine {
     this.micStream = nextStream;
     this.micNode = nextNode;
     this.micNode.connect(this.micGain);
-  }
-
-  private peakLevel(frame: Float32Array) {
-    let peak = 0;
-    for (const sample of frame) peak = Math.max(peak, Math.abs(sample));
-    return Math.min(1, peak);
   }
 }

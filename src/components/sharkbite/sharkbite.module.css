@@ -352,7 +352,7 @@
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(170px, 1fr) 50px minmax(210px, 0.9fr);
+  grid-template-columns: minmax(150px, 1fr) 50px minmax(150px, 0.45fr);
   min-height: 72px;
   opacity: 0.48;
   padding: 12px 0;
@@ -423,50 +423,34 @@
 }
 
 .tapReadout {
-  align-items: stretch;
+  align-items: center;
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(110px, 1fr) minmax(68px, 0.42fr);
+  grid-template-columns: 76px minmax(58px, 68px);
+  justify-content: end;
 }
 
-.tapSignal {
+.tapSignalPill {
   background: var(--panel);
   border: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  justify-content: center;
-  min-height: 44px;
-  padding: 6px 8px;
-}
-
-.tapSignal span {
-  color: var(--muted);
-  display: block;
-  font-size: 9px;
-  font-weight: 850;
-  letter-spacing: 0;
-}
-
-.tapSignalMeter {
-  background: rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--line);
-  height: 8px;
+  border-radius: 999px;
+  height: 24px;
   overflow: hidden;
+  padding: 3px 6px;
+  width: 76px;
 }
 
-.tapSignalMeter i {
-  background: var(--tap-color);
+.tapSignalWaveform {
+  color: var(--tap-color);
   display: block;
   height: 100%;
-  transition: width 180ms linear;
-  width: 0;
+  width: 100%;
 }
 
 .metric {
   background: var(--panel);
   border: 1px solid var(--line);
-  min-height: 44px;
+  min-height: 36px;
   padding: 5px 8px;
   text-align: center;
 }
@@ -528,7 +512,8 @@
   }
 
   .tapReadout {
-    grid-template-columns: minmax(0, 1fr) minmax(68px, 0.45fr);
+    grid-template-columns: 76px minmax(58px, 68px);
+    justify-content: start;
   }
 }
 

@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import type { TapConfig } from "@/config/taps";
 import type { TapMetrics } from "@/lib/audio/types";
 import styles from "./sharkbite.module.css";
+import { TapSignalScope } from "./tap-signal-scope";
 
 type TapRowProps = {
   tap: TapConfig;
@@ -25,7 +26,6 @@ function tapStatusLabel(enabled: boolean, connected: boolean) {
 
 export function TapRow({ tap, metrics, enabled, onToggle }: TapRowProps) {
   const style = { "--tap-color": tap.color } as CSSProperties;
-  const levelPct = Math.round(metrics.level * 100);
 
   return (
     <article className={`${styles.tapRow} ${enabled ? styles.tapOn : ""}`} style={style}>
@@ -46,11 +46,8 @@ export function TapRow({ tap, metrics, enabled, onToggle }: TapRowProps) {
       />
 
       <div className={styles.tapReadout}>
-        <div className={styles.tapSignal}>
-          <span>Signal</span>
-          <div aria-label={`${tap.name} signal level`} className={styles.tapSignalMeter}>
-            <i style={{ width: `${levelPct}%` }} />
-          </div>
+        <div className={styles.tapSignalPill}>
+          <TapSignalScope label={`${tap.name} signal waveform`} tapId={tap.id} />
         </div>
         <div className={styles.metric}>
           <b>{metrics.rttMs === null ? "-" : `${formatMetric(metrics.rttMs)}ms`}</b>

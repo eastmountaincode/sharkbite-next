@@ -59,7 +59,6 @@ function createTapMetrics(): TapMetricsMap {
       tap.id,
       {
         connected: false,
-        level: 0,
         rttMs: null,
       },
     ]),

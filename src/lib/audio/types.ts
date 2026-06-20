@@ -11,7 +11,6 @@ export type TapSettings = {
 
 export type TapMetrics = {
   connected: boolean;
-  level: number;
   rttMs: number | null;
 };
 
