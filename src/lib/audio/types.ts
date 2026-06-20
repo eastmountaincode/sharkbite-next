@@ -15,6 +15,8 @@ export type TapMetrics = {
   rttMs: number | null;
 };
 
+export type TapMetricsUpdate = Partial<TapMetrics>;
+
 export type TapRuntimeSettings = Omit<TapSettings, "enabled">;
 
 export type TapMetricsMap = Record<TapId, TapMetrics>;

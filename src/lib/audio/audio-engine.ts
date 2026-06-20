@@ -1,9 +1,10 @@
 import { DEFAULT_TAP_SETTINGS, type FrameSizeMs, type TapConfig, type TapId } from "@/config/taps";
 import { buildTapSocketUrl } from "@/lib/audio/connection-url";
 import { packFrame, unpackFrame } from "@/lib/audio/frame-codec";
-import type { BufferMode, EngineStatus, TapMetrics, TapRuntimeSettings } from "@/lib/audio/types";
+import type { BufferMode, EngineStatus, TapMetricsUpdate, TapRuntimeSettings } from "@/lib/audio/types";
 
 type BrowserWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+const RTT_METRICS_MS = 250;
 
 type TapRuntime = TapConfig & {
   enabled: boolean;
@@ -31,7 +32,7 @@ type AudioEngineOptions = {
   taps: TapConfig[];
   onStatus: (status: EngineStatus) => void;
   onTapEnabledChange: (id: TapId, enabled: boolean) => void;
-  onTapMetrics: (id: TapId, metrics: TapMetrics) => void;
+  onTapMetrics: (id: TapId, metrics: TapMetricsUpdate) => void;
   onVu: (level: number) => void;
 };
 
@@ -367,15 +368,15 @@ export class AudioEngine {
 
     socket.onopen = () => {
       tap.connected = true;
-      this.emitTapMetrics(tap);
+      this.emitTapMetrics(tap, true);
     };
     socket.onclose = () => {
       tap.connected = false;
-      this.emitTapMetrics(tap);
+      this.emitTapMetrics(tap, true);
     };
     socket.onerror = () => {
       tap.connected = false;
-      this.emitTapMetrics(tap);
+      this.emitTapMetrics(tap, true);
     };
     socket.onmessage = (event) => {
       if (event.data instanceof ArrayBuffer) {
@@ -413,7 +414,7 @@ export class AudioEngine {
     tap.panner = null;
     tap.feedbackFrame = null;
     tap.level = 0;
-    this.emitTapMetrics(tap);
+    this.emitTapMetrics(tap, true);
   }
 
   private sendFrameToEnabledTaps(frame: Float32Array) {
@@ -460,6 +461,7 @@ export class AudioEngine {
     tap.lastSeqSeen = seq;
     tap.received += 1;
     tap.level = Math.max(this.peakLevel(frame), tap.level * 0.72);
+    this.emitTapSignal(tap);
 
     if (tap.player) {
       const playbackFrame = new Float32Array(frame);
@@ -484,7 +486,7 @@ export class AudioEngine {
     if (this.metricsTimer !== null) window.clearInterval(this.metricsTimer);
     this.metricsTimer = window.setInterval(() => {
       for (const tap of this.taps.values()) this.emitTapMetrics(tap);
-    }, 1000);
+    }, RTT_METRICS_MS);
   }
 
   private startVuLoop() {
@@ -504,13 +506,18 @@ export class AudioEngine {
     this.vuFrame = window.requestAnimationFrame(loop);
   }
 
-  private emitTapMetrics(tap: TapRuntime) {
+  private emitTapMetrics(tap: TapRuntime, includeLevel = false) {
     this.onTapMetrics(tap.id, {
       connected: tap.connected,
-      level: tap.connected ? Math.min(1, tap.level * 1.4) : 0,
+      ...(includeLevel ? { level: tap.connected ? Math.min(1, tap.level * 1.4) : 0 } : {}),
       rttMs: tap.rttEwma,
     });
-    tap.level = tap.connected ? tap.level * 0.58 : 0;
+  }
+
+  private emitTapSignal(tap: TapRuntime) {
+    this.onTapMetrics(tap.id, {
+      level: tap.connected ? Math.min(1, tap.level * 1.4) : 0,
+    });
   }
 
   private setStatus(running: boolean, micEnabled: boolean, message: string) {

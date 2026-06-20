@@ -101,7 +101,7 @@ export function SharkbiteApp() {
         onTapMetrics: (id, metrics) => {
           setTapMetrics((current) => ({
             ...current,
-            [id]: metrics,
+            [id]: { ...current[id], ...metrics },
           }));
         },
         onVu: setVu,
