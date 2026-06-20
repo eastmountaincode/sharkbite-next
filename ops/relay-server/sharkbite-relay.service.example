@@ -5,8 +5,9 @@ Wants=network-online.target
 
 [Service]
 WorkingDirectory=/opt/sharkbite/ops/relay-server
+Environment=HOST=127.0.0.1
 Environment=PORT=8082
-ExecStart=/usr/local/bin/bun server.ts
+ExecStart=/usr/bin/node node-server.mjs
 Restart=always
 RestartSec=2
 NoNewPrivileges=true

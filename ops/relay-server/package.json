@@ -4,7 +4,10 @@
   "type": "module",
   "scripts": {
     "dev": "bun --watch server.ts",
-    "start": "bun server.ts"
+    "start": "bun server.ts",
+    "start:node": "node node-server.mjs"
   },
-  "dependencies": {}
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
 }

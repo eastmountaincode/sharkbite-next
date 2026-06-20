@@ -51,12 +51,26 @@ scripts/do/deploy-tap-service.sh 64.226.68.99
 
 ## Relay deployment shape
 
-The relay server in `ops/relay-server/server.ts` is a Bun service. It accepts:
+The relay server in `ops/relay-server` has both a Bun implementation and a Node implementation. The NYC droplet currently uses the Node implementation because Node and nginx are already installed there. It accepts:
 
 - `GET /healthz`
 - `WS /relay?ip=<allowed tap ip>`
 
-For production, run it on the extra DigitalOcean droplet behind Caddy or nginx so the public origin is HTTPS/WSS. Then set the Vercel project environment variable:
+For production, run it on the extra DigitalOcean droplet behind Caddy or nginx so the public origin is HTTPS/WSS. The NYC droplet is configured for nginx with the service at `127.0.0.1:8082`.
+
+DNS needed at the `andrew-boylan.com` DNS provider:
+
+```text
+relay.sharkbite.andrew-boylan.com.  A  142.93.200.109
+```
+
+After DNS resolves to the droplet, issue TLS on the NYC host:
+
+```bash
+certbot --nginx -d relay.sharkbite.andrew-boylan.com --agree-tos -m andreweboylan@gmail.com --redirect
+```
+
+Then set the Vercel project environment variable:
 
 ```bash
 NEXT_PUBLIC_SHARKBITE_RELAY_ORIGIN=https://relay.example.com
