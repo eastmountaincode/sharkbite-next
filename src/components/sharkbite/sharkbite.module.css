@@ -36,9 +36,8 @@
 .brand p {
   color: var(--muted);
   font-size: 11px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
   margin: 4px 0 0;
-  text-transform: uppercase;
 }
 
 .actions {
@@ -58,10 +57,9 @@
   font-weight: 850;
   gap: 8px;
   justify-content: center;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   min-height: 36px;
   padding: 8px 13px;
-  text-transform: uppercase;
 }
 
 .primaryButton {
@@ -86,9 +84,8 @@
   color: var(--foreground);
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   padding: 7px 10px;
-  text-transform: uppercase;
 }
 
 .content {
@@ -118,17 +115,15 @@
 .moduleHeader h2 {
   font-size: 13px;
   font-weight: 850;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   margin: 0;
-  text-transform: uppercase;
 }
 
 .moduleNumber,
 .moduleStatus {
   font-size: 11px;
   font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .moduleStatus {
@@ -168,8 +163,7 @@
   font-size: 11px;
   gap: 12px;
   justify-content: space-between;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .controlLabel b {
@@ -179,8 +173,7 @@
 .controlNote {
   color: var(--muted);
   font-size: 10px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .controlWithMeter {
@@ -383,9 +376,8 @@
 .tapIdentity h3 {
   font-size: 12px;
   font-weight: 850;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   margin: 0;
-  text-transform: uppercase;
 }
 
 .tapIdentity p {
@@ -453,8 +445,7 @@
   display: block;
   font-size: 9px;
   font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .tapSignalMeter {
@@ -491,8 +482,7 @@
   color: var(--muted);
   display: block;
   font-size: 9px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .statusLine {
@@ -502,9 +492,8 @@
   font-size: 11px;
   gap: 12px;
   justify-content: space-between;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
   min-height: 28px;
-  text-transform: uppercase;
 }
 
 @media (max-width: 920px) {
