@@ -11,9 +11,8 @@ export type TapSettings = {
 
 export type TapMetrics = {
   connected: boolean;
+  level: number;
   rttMs: number | null;
-  jitterMs: number | null;
-  lossPct: number | null;
 };
 
 export type TapRuntimeSettings = Omit<TapSettings, "enabled">;

@@ -24,6 +24,12 @@ const MASTER_WET_LEVEL = 1;
 const FRAME_SIZE_MS: FrameSizeMs = 20;
 const BUFFER_MODE: BufferMode = "buffered";
 const JITTER_BUFFER_MS = 50;
+const DEFAULT_INPUT_DEVICE_ID = "";
+
+type AudioInputOption = {
+  deviceId: string;
+  label: string;
+};
 
 function subscribeToConnectionMode() {
   return () => {};
@@ -53,9 +59,8 @@ function createTapMetrics(): TapMetricsMap {
       tap.id,
       {
         connected: false,
+        level: 0,
         rttMs: null,
-        jitterMs: null,
-        lossPct: null,
       },
     ]),
   ) as TapMetricsMap;
@@ -69,6 +74,8 @@ export function SharkbiteApp() {
   const [activeNotes, setActiveNotes] = useState(() => new Set<number>());
   const [vu, setVu] = useState(0);
 
+  const [audioInputs, setAudioInputs] = useState<AudioInputOption[]>([]);
+  const [inputDeviceId, setInputDeviceId] = useState(DEFAULT_INPUT_DEVICE_ID);
   const [wetDry, setWetDryState] = useState(50);
   const [inputLevel, setInputLevelState] = useState(0);
   const [waveform, setWaveformState] = useState<OscillatorType>("triangle");
@@ -104,6 +111,30 @@ export function SharkbiteApp() {
     return engineRef.current;
   }, []);
 
+  const refreshAudioInputs = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) return;
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const seen = new Set<string>();
+      const inputs = devices
+        .filter((device) => device.kind === "audioinput" && device.deviceId && device.deviceId !== "default")
+        .filter((device) => {
+          if (seen.has(device.deviceId)) return false;
+          seen.add(device.deviceId);
+          return true;
+        })
+        .map((device, index) => ({
+          deviceId: device.deviceId,
+          label: device.label || `Input ${index + 1}`,
+        }));
+
+      setAudioInputs(inputs);
+    } catch {
+      setAudioInputs([]);
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       engineRef.current?.destroy();
@@ -111,11 +142,32 @@ export function SharkbiteApp() {
     };
   }, []);
 
+  useEffect(() => {
+    const refreshTimer = window.setTimeout(() => {
+      void refreshAudioInputs();
+    }, 0);
+
+    const handleDeviceChange = () => {
+      void refreshAudioInputs();
+    };
+
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.addEventListener) {
+      return () => window.clearTimeout(refreshTimer);
+    }
+
+    navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
+    return () => {
+      window.clearTimeout(refreshTimer);
+      navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
+    };
+  }, [refreshAudioInputs]);
+
   const startAudio = useCallback(async () => {
     const engine = getEngine();
     await engine.start({
       bufferMode: BUFFER_MODE,
       frameMs: FRAME_SIZE_MS,
+      inputDeviceId: inputDeviceId || undefined,
       inputLevel: inputLevel / 100,
       jitterBufferMs: JITTER_BUFFER_MS,
       masterWet: MASTER_WET_LEVEL,
@@ -123,7 +175,8 @@ export function SharkbiteApp() {
       wetDry: wetDry / 100,
     });
     engine.setSynth(waveform, synthLevel / 100);
-  }, [getEngine, inputLevel, synthLevel, waveform, wetDry]);
+    await refreshAudioInputs();
+  }, [getEngine, inputDeviceId, inputLevel, refreshAudioInputs, synthLevel, waveform, wetDry]);
 
   const updateWetDry = (value: number) => {
     setWetDryState(value);
@@ -133,6 +186,13 @@ export function SharkbiteApp() {
   const updateInputLevel = (value: number) => {
     setInputLevelState(value);
     getEngine().setInputLevel(value / 100);
+  };
+
+  const updateInputDevice = (value: string) => {
+    setInputDeviceId(value);
+
+    if (!status.running) return;
+    void getEngine().setInputDevice(value || undefined).then(refreshAudioInputs);
   };
 
   const updateWaveform = (value: string) => {
@@ -221,6 +281,14 @@ export function SharkbiteApp() {
         <ModulePanel number="01" status={status.running ? "Live" : "Idle"} title="Mixer">
           <div className={styles.controlGrid}>
             <RangeControl label="Wet / Dry" max={100} min={0} value={wetDry} valueLabel={`${wetDry}%`} onChange={updateWetDry} />
+            <SelectControl label="Input Source" value={inputDeviceId} onChange={updateInputDevice}>
+              <option value={DEFAULT_INPUT_DEVICE_ID}>System Default</option>
+              {audioInputs.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label}
+                </option>
+              ))}
+            </SelectControl>
             <div className={styles.controlWithMeter}>
               <RangeControl
                 label="Input Level"

@@ -25,6 +25,7 @@ function tapStatusLabel(enabled: boolean, connected: boolean) {
 
 export function TapRow({ tap, metrics, enabled, onToggle }: TapRowProps) {
   const style = { "--tap-color": tap.color } as CSSProperties;
+  const levelPct = Math.round(metrics.level * 100);
 
   return (
     <article className={`${styles.tapRow} ${enabled ? styles.tapOn : ""}`} style={style}>
@@ -44,18 +45,16 @@ export function TapRow({ tap, metrics, enabled, onToggle }: TapRowProps) {
         onClick={() => onToggle(!enabled)}
       />
 
-      <div className={styles.metricGrid}>
+      <div className={styles.tapReadout}>
+        <div className={styles.tapSignal}>
+          <span>Signal</span>
+          <div aria-label={`${tap.name} signal level`} className={styles.tapSignalMeter}>
+            <i style={{ width: `${levelPct}%` }} />
+          </div>
+        </div>
         <div className={styles.metric}>
-          <b>{formatMetric(metrics.rttMs)}</b>
+          <b>{metrics.rttMs === null ? "-" : `${formatMetric(metrics.rttMs)}ms`}</b>
           <span>RTT</span>
-        </div>
-        <div className={styles.metric}>
-          <b>{formatMetric(metrics.jitterMs, 1)}</b>
-          <span>Jit</span>
-        </div>
-        <div className={styles.metric}>
-          <b>{formatMetric(metrics.lossPct, 1)}</b>
-          <span>Loss</span>
         </div>
       </div>
     </article>

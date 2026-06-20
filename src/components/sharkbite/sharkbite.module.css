@@ -5,15 +5,16 @@
 
 .topbar {
   align-items: center;
-  background: rgba(241, 239, 232, 0.92);
-  border-bottom: 2px solid var(--line);
+  background: var(--panel);
+  border: 1px solid var(--line);
   display: flex;
   gap: 18px;
   justify-content: space-between;
-  min-height: 72px;
-  padding: 16px 22px;
+  margin: 18px 18px 0;
+  min-height: 86px;
+  padding: 18px 22px;
   position: sticky;
-  top: 0;
+  top: 12px;
   z-index: 20;
 }
 
@@ -25,12 +26,11 @@
 }
 
 .brand h1 {
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1.1;
+  font-size: clamp(28px, 5vw, 56px);
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 0.9;
   margin: 0;
-  text-transform: uppercase;
 }
 
 .brand p {
@@ -52,10 +52,10 @@
 .primaryButton,
 .secondaryButton {
   align-items: center;
-  border: 2px solid var(--line);
+  border: 1px solid var(--line);
   display: inline-flex;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 850;
   gap: 8px;
   justify-content: center;
   letter-spacing: 0.08em;
@@ -76,14 +76,14 @@
 
 .primaryButton:not(:disabled):hover,
 .secondaryButton:not(:disabled):hover {
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--line);
+  color: var(--panel);
 }
 
 .modeBadge {
-  border: 2px solid var(--line);
-  background: #d9eee8;
-  color: #0f5f50;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--foreground);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -101,13 +101,14 @@
 }
 
 .module {
-  background: rgba(241, 239, 232, 0.92);
-  border: 2px solid var(--line);
+  background: var(--panel);
+  border: 1px solid var(--line);
 }
 
 .moduleHeader {
   align-items: center;
-  border-bottom: 2px solid var(--line);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
   display: flex;
   gap: 14px;
   min-height: 46px;
@@ -150,7 +151,7 @@
 .controlGrid {
   display: grid;
   gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .control {
@@ -218,7 +219,7 @@
 }
 
 .stepper {
-  border: 2px solid var(--line);
+  border: 1px solid var(--line);
   display: grid;
   grid-template-columns: 38px minmax(42px, 1fr) 38px;
   min-height: 34px;
@@ -237,16 +238,16 @@
 }
 
 .stepperButton:first-child {
-  border-right: 2px solid var(--line);
+  border-right: 1px solid var(--line);
 }
 
 .stepperButton:last-child {
-  border-left: 2px solid var(--line);
+  border-left: 1px solid var(--line);
 }
 
 .stepperButton:not(:disabled):hover {
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--line);
+  color: var(--panel);
 }
 
 .stepperButton:disabled {
@@ -266,14 +267,15 @@
 }
 
 .keyboard {
-  background: var(--line);
-  border: 2px solid var(--line);
-  display: inline-block;
-  height: 190px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  display: block;
+  height: clamp(148px, 22vw, 210px);
+  overflow: hidden;
   position: relative;
   touch-action: none;
   user-select: none;
-  width: 370px;
+  width: 100%;
 }
 
 .whiteKeys {
@@ -300,7 +302,7 @@
   height: 100%;
   justify-content: flex-end;
   padding-bottom: 10px;
-  width: 46px;
+  flex: 1 1 0;
 }
 
 .whiteKey:last-child {
@@ -320,27 +322,30 @@
 .blackKey {
   background: var(--line);
   color: var(--panel);
+  border: 1px solid var(--line);
   font-size: 10px;
   font-weight: 850;
   height: 62%;
   position: absolute;
   top: 0;
-  transform: translateX(-50%);
-  width: 28px;
+  transform: none;
   z-index: 2;
 }
 
 .keyDown.whiteKey {
-  background: #c7e4da;
+  background: var(--line);
+  color: var(--panel);
 }
 
 .keyDown.blackKey {
   background: var(--accent);
+  color: var(--foreground);
 }
 
 .whiteKey:disabled,
 .blackKey:disabled {
   cursor: not-allowed;
+  opacity: 1;
 }
 
 .tapList {
@@ -402,7 +407,7 @@
 
 .switch {
   background: var(--panel);
-  border: 2px solid var(--line);
+  border: 1px solid var(--line);
   height: 24px;
   position: relative;
   width: 48px;
@@ -424,15 +429,51 @@
   left: 24px;
 }
 
-.metricGrid {
+.tapReadout {
+  align-items: stretch;
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(3, minmax(58px, 1fr));
+  grid-template-columns: minmax(110px, 1fr) minmax(68px, 0.42fr);
+}
+
+.tapSignal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+  min-height: 44px;
+  padding: 6px 8px;
+}
+
+.tapSignal span {
+  color: var(--muted);
+  display: block;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tapSignalMeter {
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--line);
+  height: 8px;
+  overflow: hidden;
+}
+
+.tapSignalMeter i {
+  background: var(--tap-color);
+  display: block;
+  height: 100%;
+  transition: width 180ms linear;
+  width: 0;
 }
 
 .metric {
   background: var(--panel);
-  border: 2px solid var(--line);
+  border: 1px solid var(--line);
   min-height: 44px;
   padding: 5px 8px;
   text-align: center;
@@ -469,6 +510,7 @@
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+    margin: 12px 12px 0;
   }
 
   .actions {
@@ -495,8 +537,8 @@
     grid-template-columns: 1fr;
   }
 
-  .metricGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .tapReadout {
+    grid-template-columns: minmax(0, 1fr) minmax(68px, 0.45fr);
   }
 }
 
@@ -506,11 +548,10 @@
   }
 
   .keyboard {
-    transform: scale(0.82);
-    transform-origin: left top;
+    height: 124px;
   }
 
   .moduleBody {
-    overflow: hidden;
+    overflow-x: auto;
   }
 }

@@ -24,6 +24,7 @@ type TapRuntime = TapConfig & {
   received: number;
   lastSeqSeen: number;
   lost: number;
+  level: number;
 };
 
 type AudioEngineOptions = {
@@ -42,6 +43,7 @@ export type StartOptions = {
   bufferMode: BufferMode;
   jitterBufferMs: number;
   synthLevel: number;
+  inputDeviceId?: string;
 };
 
 export class AudioEngine {
@@ -103,6 +105,7 @@ export class AudioEngine {
         received: 0,
         lastSeqSeen: -1,
         lost: 0,
+        level: 0,
       });
     }
   }
@@ -164,18 +167,10 @@ export class AudioEngine {
 
     this.micGain = this.ctx.createGain();
     this.micGain.gain.value = options.inputLevel;
+    this.micGain.connect(this.sourceBus);
 
     try {
-      this.micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          autoGainControl: false,
-          echoCancellation: false,
-          noiseSuppression: false,
-        },
-      });
-      this.micNode = this.ctx.createMediaStreamSource(this.micStream);
-      this.micNode.connect(this.micGain);
-      this.micGain.connect(this.sourceBus);
+      await this.connectInput(options.inputDeviceId);
       this.micEnabled = true;
       this.setStatus(true, true, "Live with mic and synth.");
     } catch {
@@ -239,6 +234,18 @@ export class AudioEngine {
 
   setInputLevel(level: number) {
     if (this.micGain) this.micGain.gain.value = level;
+  }
+
+  async setInputDevice(inputDeviceId?: string) {
+    if (!this.ctx || !this.micGain || !this.sourceBus) return;
+
+    try {
+      await this.connectInput(inputDeviceId);
+      this.micEnabled = true;
+      this.setStatus(this.running, true, "Audio input changed.");
+    } catch {
+      this.setStatus(this.running, this.micEnabled, "Could not use that audio input. Keeping previous input.");
+    }
   }
 
   setBuffering(bufferMode: BufferMode, jitterBufferMs: number) {
@@ -405,6 +412,7 @@ export class AudioEngine {
     tap.gain = null;
     tap.panner = null;
     tap.feedbackFrame = null;
+    tap.level = 0;
     this.emitTapMetrics(tap);
   }
 
@@ -451,14 +459,13 @@ export class AudioEngine {
     }
     tap.lastSeqSeen = seq;
     tap.received += 1;
+    tap.level = Math.max(this.peakLevel(frame), tap.level * 0.72);
 
     if (tap.player) {
       const playbackFrame = new Float32Array(frame);
       tap.player.port.postMessage({ frame: playbackFrame }, [playbackFrame.buffer]);
     }
     if (tap.feedback > 0) tap.feedbackFrame = frame;
-
-    this.emitTapMetrics(tap);
   }
 
   private applyPrebuffer() {
@@ -477,7 +484,7 @@ export class AudioEngine {
     if (this.metricsTimer !== null) window.clearInterval(this.metricsTimer);
     this.metricsTimer = window.setInterval(() => {
       for (const tap of this.taps.values()) this.emitTapMetrics(tap);
-    }, 400);
+    }, 1000);
   }
 
   private startVuLoop() {
@@ -498,16 +505,45 @@ export class AudioEngine {
   }
 
   private emitTapMetrics(tap: TapRuntime) {
-    const lossPct = tap.sent > 0 ? (tap.lost / Math.max(1, tap.sent)) * 100 : null;
     this.onTapMetrics(tap.id, {
       connected: tap.connected,
+      level: tap.connected ? Math.min(1, tap.level * 1.4) : 0,
       rttMs: tap.rttEwma,
-      jitterMs: tap.received > 2 ? tap.jitter : null,
-      lossPct: tap.received > 2 ? lossPct : null,
     });
+    tap.level = tap.connected ? tap.level * 0.58 : 0;
   }
 
   private setStatus(running: boolean, micEnabled: boolean, message: string) {
     this.onStatus({ running, micEnabled, message });
+  }
+
+  private async connectInput(inputDeviceId?: string) {
+    if (!this.ctx || !this.micGain || !this.sourceBus) return;
+
+    const audio: MediaTrackConstraints = {
+      autoGainControl: false,
+      echoCancellation: false,
+      noiseSuppression: false,
+    };
+
+    if (inputDeviceId) {
+      audio.deviceId = { exact: inputDeviceId };
+    }
+
+    const nextStream = await navigator.mediaDevices.getUserMedia({ audio });
+    const nextNode = this.ctx.createMediaStreamSource(nextStream);
+
+    this.micNode?.disconnect();
+    this.micStream?.getTracks().forEach((track) => track.stop());
+
+    this.micStream = nextStream;
+    this.micNode = nextNode;
+    this.micNode.connect(this.micGain);
+  }
+
+  private peakLevel(frame: Float32Array) {
+    let peak = 0;
+    for (const sample of frame) peak = Math.max(peak, Math.abs(sample));
+    return Math.min(1, peak);
   }
 }

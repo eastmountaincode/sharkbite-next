@@ -1,21 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f1efe8;
-  --foreground: #111111;
-  --muted: #756f64;
+  --background: #ebe8de;
+  --foreground: #171717;
+  --muted: #68645c;
   --panel: #fbfaf6;
-  --line: #111111;
-  --soft-line: #c7c0b3;
-  --accent: #16a085;
+  --surface: #f3f1ea;
+  --line: #242424;
+  --soft-line: #d8cfb7;
+  --accent: #d8cfb7;
   --danger: #b93832;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-sans: Helvetica, Arial, sans-serif;
+  --font-mono: Helvetica, Arial, sans-serif;
 }
 
 * {
@@ -28,13 +29,11 @@ html {
 
 body {
   min-height: 100vh;
-  background:
-    linear-gradient(90deg, rgba(17, 17, 17, 0.035) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(17, 17, 17, 0.03) 1px, transparent 1px),
-    var(--background);
-  background-size: 36px 36px;
+  background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-mono), "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  user-select: none;
 }
 
 button,
@@ -44,6 +43,7 @@ select {
 }
 
 button {
+  border-radius: 0;
   cursor: pointer;
 }
 
@@ -53,44 +53,55 @@ button:disabled {
 }
 
 input[type="range"] {
+  -webkit-appearance: none;
   appearance: none;
-  background: transparent;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0;
   cursor: pointer;
-  height: 22px;
+  height: 12px;
   margin: 0;
+  outline: none;
   width: 100%;
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
-  background: var(--line);
-  height: 2px;
+  background: transparent;
+  height: 12px;
 }
 
 input[type="range"]::-moz-range-track {
-  background: var(--line);
-  height: 2px;
+  background: transparent;
+  border: 0;
+  height: 12px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
   appearance: none;
   background: var(--line);
-  border: 0;
-  height: 22px;
-  margin-top: -10px;
-  width: 14px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  height: 28px;
+  margin-top: -8px;
+  width: 18px;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  background: var(--panel);
 }
 
 input[type="range"]::-moz-range-thumb {
   background: var(--line);
-  border: 0;
+  border: 1px solid var(--line);
   border-radius: 0;
-  height: 22px;
-  width: 14px;
+  height: 28px;
+  width: 18px;
 }
 
 select {
   background: var(--panel);
-  border: 2px solid var(--line);
+  border: 1px solid var(--line);
   border-radius: 0;
   color: var(--foreground);
   min-height: 34px;

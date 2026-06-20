@@ -26,13 +26,8 @@ export const SYNTH_KEYS: SynthKey[] = [
   { name: "C", semitone: 12, black: false, key: "k" },
 ];
 
-const BLACK_KEY_LEFT: Record<number, number> = {
-  1: 46,
-  3: 92,
-  6: 184,
-  8: 230,
-  10: 276,
-};
+const BLACK_SEMITONES = new Set([1, 3, 6, 8, 10]);
+const KEY_BINDINGS_BY_SEMITONE = new Map(SYNTH_KEYS.map((key) => [key.semitone, key]));
 
 type SynthKeyboardProps = {
   octave: number;
@@ -47,13 +42,31 @@ function midiFor(key: SynthKey, octave: number) {
 }
 
 function noteLabel(key: SynthKey, octave: number) {
-  return `${key.name}${octave + (key.semitone >= 12 ? 1 : 0)}`;
+  return `${key.name}${octave + Math.floor(key.semitone / 12)}`;
+}
+
+function isBlackKey(semitone: number) {
+  return BLACK_SEMITONES.has(semitone % 12);
+}
+
+function noteNameFor(semitone: number) {
+  return SYNTH_KEYS.find((key) => key.semitone === semitone % 12)?.name ?? "C";
 }
 
 export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteOff }: SynthKeyboardProps) {
   const heldKeys = useRef(new Set<string>());
-  const whiteKeys = useMemo(() => SYNTH_KEYS.filter((key) => !key.black), []);
-  const blackKeys = useMemo(() => SYNTH_KEYS.filter((key) => key.black), []);
+  const visualKeys = useMemo(
+    () =>
+      Array.from({ length: 25 }, (_, semitone) => ({
+        semitone,
+        name: noteNameFor(semitone),
+        black: isBlackKey(semitone),
+        key: KEY_BINDINGS_BY_SEMITONE.get(semitone)?.key ?? "",
+      })),
+    [],
+  );
+  const whiteKeys = useMemo(() => visualKeys.filter((key) => !key.black), [visualKeys]);
+  const blackKeys = useMemo(() => visualKeys.filter((key) => key.black), [visualKeys]);
 
   useEffect(() => {
     const held = heldKeys.current;
@@ -112,7 +125,7 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
               }}
               onPointerUp={() => onNoteOff(midi)}
             >
-              <span>{key.key.toUpperCase()}</span>
+              <span>{key.key ? key.key.toUpperCase() : ""}</span>
               <small>{noteLabel(key, octave)}</small>
             </button>
           );
@@ -122,6 +135,9 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
       {blackKeys.map((key) => {
         const midi = midiFor(key, octave);
         const pressed = activeNotes.has(midi);
+        const whitesBefore = visualKeys.filter((candidate) => !candidate.black && candidate.semitone < key.semitone).length;
+        const leftPercent = ((whitesBefore - 0.34) / whiteKeys.length) * 100;
+        const widthPercent = (100 / whiteKeys.length) * 0.64;
 
         return (
           <button
@@ -129,7 +145,7 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
             className={`${styles.blackKey} ${pressed ? styles.keyDown : ""}`}
             disabled={disabled}
             key={`${key.name}-${key.semitone}`}
-            style={{ left: `${BLACK_KEY_LEFT[key.semitone]}px` }}
+            style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
             type="button"
             onPointerCancel={() => onNoteOff(midi)}
             onPointerDown={(event) => {
@@ -142,7 +158,7 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
             }}
             onPointerUp={() => onNoteOff(midi)}
           >
-            {key.key.toUpperCase()}
+            {key.key ? key.key.toUpperCase() : ""}
           </button>
         );
       })}
