@@ -2,10 +2,10 @@
 
 import { Minus, Plus, Power, RadioTower, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { DEFAULT_TAP_SETTINGS, FRAME_SIZES_MS, TAPS, type FrameSizeMs, type TapId } from "@/config/taps";
+import { DEFAULT_TAP_SETTINGS, TAPS, type FrameSizeMs, type TapId } from "@/config/taps";
 import { AudioEngine } from "@/lib/audio/audio-engine";
 import { describeConnectionMode } from "@/lib/audio/connection-url";
-import type { BufferMode, EngineStatus, TapMetricsMap, TapSettings, TapSettingsMap } from "@/lib/audio/types";
+import type { BufferMode, EngineStatus, TapMetricsMap, TapSettingsMap } from "@/lib/audio/types";
 import { RangeControl, SelectControl } from "./control";
 import { ModulePanel } from "./module-panel";
 import { SynthKeyboard } from "./synth-keyboard";
@@ -21,6 +21,9 @@ const INITIAL_STATUS: EngineStatus = {
 const MIN_OCTAVE = 2;
 const MAX_OCTAVE = 6;
 const MASTER_WET_LEVEL = 1;
+const FRAME_SIZE_MS: FrameSizeMs = 20;
+const BUFFER_MODE: BufferMode = "buffered";
+const JITTER_BUFFER_MS = 50;
 
 function subscribeToConnectionMode() {
   return () => {};
@@ -67,9 +70,6 @@ export function SharkbiteApp() {
   const [vu, setVu] = useState(0);
 
   const [wetDry, setWetDryState] = useState(50);
-  const [frameSize, setFrameSizeState] = useState<FrameSizeMs>(20);
-  const [bufferMode, setBufferModeState] = useState<BufferMode>("buffered");
-  const [jitterBuffer, setJitterBufferState] = useState(60);
   const [inputLevel, setInputLevelState] = useState(0);
   const [waveform, setWaveformState] = useState<OscillatorType>("triangle");
   const [synthLevel, setSynthLevelState] = useState(70);
@@ -114,37 +114,20 @@ export function SharkbiteApp() {
   const startAudio = useCallback(async () => {
     const engine = getEngine();
     await engine.start({
-      bufferMode,
-      frameMs: frameSize,
+      bufferMode: BUFFER_MODE,
+      frameMs: FRAME_SIZE_MS,
       inputLevel: inputLevel / 100,
-      jitterBufferMs: jitterBuffer,
+      jitterBufferMs: JITTER_BUFFER_MS,
       masterWet: MASTER_WET_LEVEL,
       synthLevel: synthLevel / 100,
       wetDry: wetDry / 100,
     });
     engine.setSynth(waveform, synthLevel / 100);
-  }, [bufferMode, frameSize, getEngine, inputLevel, jitterBuffer, synthLevel, waveform, wetDry]);
+  }, [getEngine, inputLevel, synthLevel, waveform, wetDry]);
 
   const updateWetDry = (value: number) => {
     setWetDryState(value);
     getEngine().setWetDry(value / 100, MASTER_WET_LEVEL);
-  };
-
-  const updateFrameSize = (index: number) => {
-    const next = FRAME_SIZES_MS[index] ?? 20;
-    setFrameSizeState(next);
-    getEngine().setFrameMs(next);
-  };
-
-  const updateBufferMode = (value: string) => {
-    const next = value as BufferMode;
-    setBufferModeState(next);
-    getEngine().setBuffering(next, jitterBuffer);
-  };
-
-  const updateJitterBuffer = (value: number) => {
-    setJitterBufferState(value);
-    getEngine().setBuffering(bufferMode, value);
   };
 
   const updateInputLevel = (value: number) => {
@@ -165,15 +148,6 @@ export function SharkbiteApp() {
 
   const nudgeOctave = (direction: -1 | 1) => {
     setOctaveState((current) => Math.min(MAX_OCTAVE, Math.max(MIN_OCTAVE, current + direction)));
-  };
-
-  const updateTap = (id: TapId, next: TapSettings) => {
-    setTapSettings((current) => ({ ...current, [id]: next }));
-    getEngine().setTapSettings(id, {
-      feedback: next.feedback,
-      pan: next.pan,
-      returnLevel: next.returnLevel,
-    });
   };
 
   const toggleTap = (id: TapId, enabled: boolean) => {
@@ -218,7 +192,6 @@ export function SharkbiteApp() {
   );
 
   const enabledTapCount = TAPS.filter((tap) => tapSettings[tap.id].enabled).length;
-  const frameIndex = FRAME_SIZES_MS.indexOf(frameSize);
 
   return (
     <main className={styles.shell}>
@@ -248,28 +221,6 @@ export function SharkbiteApp() {
         <ModulePanel number="01" status={status.running ? "Live" : "Idle"} title="Mixer">
           <div className={styles.controlGrid}>
             <RangeControl label="Wet / Dry" max={100} min={0} value={wetDry} valueLabel={`${wetDry}%`} onChange={updateWetDry} />
-            <RangeControl
-              label="Frame Size"
-              max={3}
-              min={0}
-              step={1}
-              value={frameIndex}
-              valueLabel={`${frameSize} ms`}
-              onChange={updateFrameSize}
-            />
-            <SelectControl label="Buffer Mode" value={bufferMode} onChange={updateBufferMode}>
-              <option value="raw">Raw</option>
-              <option value="buffered">Buffered</option>
-            </SelectControl>
-            <RangeControl
-              label="Jitter Buffer"
-              max={200}
-              min={20}
-              step={10}
-              value={jitterBuffer}
-              valueLabel={`${jitterBuffer} ms`}
-              onChange={updateJitterBuffer}
-            />
             <div className={styles.controlWithMeter}>
               <RangeControl
                 label="Input Level"
@@ -344,9 +295,8 @@ export function SharkbiteApp() {
               <TapRow
                 key={tap.id}
                 metrics={tapMetrics[tap.id]}
-                settings={tapSettings[tap.id]}
+                enabled={tapSettings[tap.id].enabled}
                 tap={tap}
-                onSettingsChange={(next) => updateTap(tap.id, next)}
                 onToggle={(enabled) => toggleTap(tap.id, enabled)}
               />
             ))}

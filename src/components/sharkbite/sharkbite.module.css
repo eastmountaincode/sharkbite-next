@@ -353,7 +353,7 @@
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(170px, 1fr) 50px minmax(320px, 1.75fr) minmax(210px, 0.85fr);
+  grid-template-columns: minmax(170px, 1fr) 50px minmax(210px, 0.9fr);
   min-height: 72px;
   opacity: 0.48;
   padding: 12px 0;
@@ -424,12 +424,6 @@
   left: 24px;
 }
 
-.tapControls {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(2, minmax(90px, 1fr));
-}
-
 .metricGrid {
   display: grid;
   gap: 8px;
@@ -498,10 +492,6 @@
 
   .tapRow {
     align-items: stretch;
-    grid-template-columns: 1fr;
-  }
-
-  .tapControls {
     grid-template-columns: 1fr;
   }
 
