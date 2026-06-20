@@ -55,14 +55,6 @@ export function TapRow({ tap, metrics, settings, onToggle, onSettingsChange }: T
           onChange={(value) => onSettingsChange({ ...settings, returnLevel: value / 100 })}
         />
         <RangeControl
-          label="Feedback"
-          max={95}
-          min={0}
-          value={Math.round(settings.feedback * 100)}
-          valueLabel={`${Math.round(settings.feedback * 100)}%`}
-          onChange={(value) => onSettingsChange({ ...settings, feedback: value / 100 })}
-        />
-        <RangeControl
           label="Pan"
           max={100}
           min={-100}

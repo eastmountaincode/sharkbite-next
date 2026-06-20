@@ -1,6 +1,6 @@
 "use client";
 
-import { Power, RadioTower, VolumeX } from "lucide-react";
+import { Minus, Plus, Power, RadioTower, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { DEFAULT_TAP_SETTINGS, FRAME_SIZES_MS, TAPS, type FrameSizeMs, type TapId } from "@/config/taps";
 import { AudioEngine } from "@/lib/audio/audio-engine";
@@ -17,6 +17,10 @@ const INITIAL_STATUS: EngineStatus = {
   micEnabled: false,
   message: "Idle. Audio engine is not started.",
 };
+
+const MIN_OCTAVE = 2;
+const MAX_OCTAVE = 6;
+const MASTER_WET_LEVEL = 1;
 
 function subscribeToConnectionMode() {
   return () => {};
@@ -63,7 +67,6 @@ export function SharkbiteApp() {
   const [vu, setVu] = useState(0);
 
   const [wetDry, setWetDryState] = useState(50);
-  const [masterWet, setMasterWetState] = useState(100);
   const [frameSize, setFrameSizeState] = useState<FrameSizeMs>(20);
   const [bufferMode, setBufferModeState] = useState<BufferMode>("buffered");
   const [jitterBuffer, setJitterBufferState] = useState(60);
@@ -115,21 +118,16 @@ export function SharkbiteApp() {
       frameMs: frameSize,
       inputLevel: inputLevel / 100,
       jitterBufferMs: jitterBuffer,
-      masterWet: masterWet / 100,
+      masterWet: MASTER_WET_LEVEL,
       synthLevel: synthLevel / 100,
       wetDry: wetDry / 100,
     });
     engine.setSynth(waveform, synthLevel / 100);
-  }, [bufferMode, frameSize, getEngine, inputLevel, jitterBuffer, masterWet, synthLevel, waveform, wetDry]);
+  }, [bufferMode, frameSize, getEngine, inputLevel, jitterBuffer, synthLevel, waveform, wetDry]);
 
   const updateWetDry = (value: number) => {
     setWetDryState(value);
-    getEngine().setWetDry(value / 100, masterWet / 100);
-  };
-
-  const updateMasterWet = (value: number) => {
-    setMasterWetState(value);
-    getEngine().setWetDry(wetDry / 100, value / 100);
+    getEngine().setWetDry(value / 100, MASTER_WET_LEVEL);
   };
 
   const updateFrameSize = (index: number) => {
@@ -163,6 +161,10 @@ export function SharkbiteApp() {
   const updateSynthLevel = (value: number) => {
     setSynthLevelState(value);
     getEngine().setSynth(waveform, value / 100);
+  };
+
+  const nudgeOctave = (direction: -1 | 1) => {
+    setOctaveState((current) => Math.min(MAX_OCTAVE, Math.max(MIN_OCTAVE, current + direction)));
   };
 
   const updateTap = (id: TapId, next: TapSettings) => {
@@ -247,14 +249,6 @@ export function SharkbiteApp() {
           <div className={styles.controlGrid}>
             <RangeControl label="Wet / Dry" max={100} min={0} value={wetDry} valueLabel={`${wetDry}%`} onChange={updateWetDry} />
             <RangeControl
-              label="Master Wet"
-              max={150}
-              min={0}
-              value={masterWet}
-              valueLabel={`${masterWet}%`}
-              onChange={updateMasterWet}
-            />
-            <RangeControl
               label="Frame Size"
               max={3}
               min={0}
@@ -311,15 +305,33 @@ export function SharkbiteApp() {
                 valueLabel={`${synthLevel}%`}
                 onChange={updateSynthLevel}
               />
-              <RangeControl
-                label="Octave"
-                max={6}
-                min={2}
-                step={1}
-                value={octave}
-                valueLabel={`${octave}`}
-                onChange={setOctaveState}
-              />
+              <div className={styles.stepperControl}>
+                <span className={styles.controlLabel}>
+                  Octave
+                  <b>{octave}</b>
+                </span>
+                <div aria-label="Octave" className={styles.stepper} role="group">
+                  <button
+                    aria-label="Lower octave"
+                    className={styles.stepperButton}
+                    disabled={octave <= MIN_OCTAVE}
+                    type="button"
+                    onClick={() => nudgeOctave(-1)}
+                  >
+                    <Minus aria-hidden="true" size={14} />
+                  </button>
+                  <span className={styles.stepperValue}>{octave}</span>
+                  <button
+                    aria-label="Raise octave"
+                    className={styles.stepperButton}
+                    disabled={octave >= MAX_OCTAVE}
+                    type="button"
+                    onClick={() => nudgeOctave(1)}
+                  >
+                    <Plus aria-hidden="true" size={14} />
+                  </button>
+                </div>
+              </div>
             </div>
           }
         >

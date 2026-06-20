@@ -210,6 +210,61 @@
   grid-template-columns: minmax(130px, 150px) minmax(140px, 180px) minmax(120px, 160px);
 }
 
+.stepperControl {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.stepper {
+  border: 2px solid var(--line);
+  display: grid;
+  grid-template-columns: 38px minmax(42px, 1fr) 38px;
+  min-height: 34px;
+}
+
+.stepperButton {
+  align-items: center;
+  background: var(--panel);
+  border: 0;
+  color: var(--foreground);
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-width: 0;
+  padding: 0;
+}
+
+.stepperButton:first-child {
+  border-right: 2px solid var(--line);
+}
+
+.stepperButton:last-child {
+  border-left: 2px solid var(--line);
+}
+
+.stepperButton:not(:disabled):hover {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.stepperButton:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.stepperValue {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.38);
+  display: flex;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+  justify-content: center;
+}
+
 .keyboard {
   background: var(--line);
   border: 2px solid var(--line);
@@ -372,7 +427,7 @@
 .tapControls {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(3, minmax(90px, 1fr));
+  grid-template-columns: repeat(2, minmax(90px, 1fr));
 }
 
 .metricGrid {
