@@ -1,0 +1,15 @@
+[Unit]
+Description=Sharkbite WebSocket relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/sharkbite/ops/relay-server
+Environment=PORT=8082
+ExecStart=/usr/local/bin/bun server.ts
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

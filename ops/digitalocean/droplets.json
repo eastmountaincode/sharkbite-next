@@ -1,0 +1,45 @@
+{
+  "taps": [
+    {
+      "name": "delay-ric",
+      "label": "Richmond",
+      "publicIpv4": "165.245.165.45",
+      "region": "ric1",
+      "udpPort": 4000,
+      "httpPort": 8080,
+      "wsPort": 8081
+    },
+    {
+      "name": "delay-sfo",
+      "label": "San Francisco",
+      "publicIpv4": "24.199.111.237",
+      "region": "sfo3",
+      "udpPort": 4000,
+      "httpPort": 8080,
+      "wsPort": 8081
+    },
+    {
+      "name": "delay-fra",
+      "label": "Frankfurt",
+      "publicIpv4": "64.226.68.99",
+      "region": "fra1",
+      "udpPort": 4000,
+      "httpPort": 8080,
+      "wsPort": 8081
+    },
+    {
+      "name": "delay-blr",
+      "label": "Bangalore",
+      "publicIpv4": "64.227.150.22",
+      "region": "blr1",
+      "udpPort": 4000,
+      "httpPort": 8080,
+      "wsPort": 8081
+    }
+  ],
+  "relayCandidate": {
+    "name": "ubuntu-s-1vcpu-512mb-10gb-nyc1-01",
+    "publicIpv4": "142.93.200.109",
+    "region": "nyc1"
+  }
+}
