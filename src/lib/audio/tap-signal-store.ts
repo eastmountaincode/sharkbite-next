@@ -1,6 +1,6 @@
 import type { TapId } from "@/config/taps";
 
-export const TAP_SIGNAL_POINTS = 32;
+export const TAP_SIGNAL_POINTS = 48;
 
 type TapSignalFrame = {
   points: Float32Array;
