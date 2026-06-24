@@ -32,3 +32,19 @@
   pointer-events: none;
   position: absolute;
 }
+
+.knob {
+  aspect-ratio: 1;
+  background-image: url("/assets/sharkbite/knob.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.inputLevelKnob {
+  left: 73%;
+  top: 48%;
+  width: 13%;
+}

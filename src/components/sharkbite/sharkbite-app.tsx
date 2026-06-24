@@ -7,7 +7,9 @@ export function SharkbiteApp() {
     <main className={styles.shell}>
       <section aria-label="Sharkbite pedal work surface" className={styles.pedalStage}>
         <div className={styles.pedalCanvas}>
-          <div className={styles.pedalOverlay} />
+          <div className={styles.pedalOverlay}>
+            <div aria-label="Input level knob" className={`${styles.knob} ${styles.inputLevelKnob}`} role="img" />
+          </div>
         </div>
       </section>
     </main>
