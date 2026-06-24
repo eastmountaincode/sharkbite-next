@@ -33,6 +33,30 @@
   position: absolute;
 }
 
+.jackLabel {
+  color: #0f0f0f;
+  font-family: var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
+  font-size: clamp(18px, 2.35vw, 34px);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  position: absolute;
+  text-transform: uppercase;
+  transform: translate(-50%, -50%) rotate(-2deg);
+  white-space: nowrap;
+}
+
+.outputJackLabel {
+  left: 34%;
+  top: 20%;
+}
+
+.inputJackLabel {
+  left: 73%;
+  top: 18%;
+  transform: translate(-50%, -50%) rotate(2deg);
+}
+
 .knob {
   aspect-ratio: 1;
   background-image: url("/assets/sharkbite/knob.png");
