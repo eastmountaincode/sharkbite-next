@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { type CSSProperties, type PointerEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import styles from "./sharkbite.module.css";
 
 export type SynthKey = {
@@ -28,6 +28,7 @@ export const SYNTH_KEYS: SynthKey[] = [
 
 const BLACK_SEMITONES = new Set([1, 3, 6, 8, 10]);
 const KEY_BINDINGS_BY_SEMITONE = new Map(SYNTH_KEYS.map((key) => [key.semitone, key]));
+const MOBILE_LAST_SEMITONE = 11;
 
 type SynthKeyboardProps = {
   octave: number;
@@ -53,8 +54,19 @@ function noteNameFor(semitone: number) {
   return SYNTH_KEYS.find((key) => key.semitone === semitone % 12)?.name ?? "C";
 }
 
+function getBlackKeyPlacement(key: SynthKey, visualKeys: SynthKey[], whiteKeyCount: number) {
+  const whitesBefore = visualKeys.filter((candidate) => !candidate.black && candidate.semitone < key.semitone).length;
+
+  return {
+    leftPercent: ((whitesBefore - 0.32) / whiteKeyCount) * 100,
+    widthPercent: (100 / whiteKeyCount) * 0.64,
+  };
+}
+
 export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteOff }: SynthKeyboardProps) {
+  const keyboardRef = useRef<HTMLDivElement | null>(null);
   const heldKeys = useRef(new Set<string>());
+  const activePointerRef = useRef<{ pointerId: number; midi: number | null } | null>(null);
   const visualKeys = useMemo(
     () =>
       Array.from({ length: 25 }, (_, semitone) => ({
@@ -67,6 +79,71 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
   );
   const whiteKeys = useMemo(() => visualKeys.filter((key) => !key.black), [visualKeys]);
   const blackKeys = useMemo(() => visualKeys.filter((key) => key.black), [visualKeys]);
+  const mobileVisualKeys = useMemo(
+    () => visualKeys.filter((key) => key.semitone <= MOBILE_LAST_SEMITONE),
+    [visualKeys],
+  );
+  const mobileWhiteKeyCount = useMemo(
+    () => mobileVisualKeys.filter((key) => !key.black).length,
+    [mobileVisualKeys],
+  );
+
+  const releasePointerNote = useCallback(
+    (pointerId?: number) => {
+      const activePointer = activePointerRef.current;
+      if (!activePointer || (pointerId !== undefined && activePointer.pointerId !== pointerId)) return;
+
+      if (activePointer.midi !== null) onNoteOff(activePointer.midi);
+      activePointerRef.current = null;
+    },
+    [onNoteOff],
+  );
+
+  const getPointerMidi = useCallback((event: PointerEvent) => {
+    const keyboard = keyboardRef.current;
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    const keyButton = target?.closest<HTMLButtonElement>("[data-synth-midi]");
+
+    if (!keyboard || !keyButton || !keyboard.contains(keyButton) || keyButton.disabled) return null;
+
+    const midi = Number(keyButton.dataset.synthMidi);
+    return Number.isFinite(midi) ? midi : null;
+  }, []);
+
+  const handlePointerDown = useCallback(
+    (event: PointerEvent<HTMLButtonElement>, midi: number) => {
+      if (disabled || event.button !== 0) return;
+
+      event.preventDefault();
+      releasePointerNote();
+      activePointerRef.current = { pointerId: event.pointerId, midi };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      onNoteOn(midi);
+    },
+    [disabled, onNoteOn, releasePointerNote],
+  );
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      const activePointer = activePointerRef.current;
+      if (!activePointer || activePointer.pointerId !== event.pointerId) return;
+
+      const nextMidi = getPointerMidi(event);
+      if (nextMidi === activePointer.midi) return;
+
+      if (activePointer.midi !== null) onNoteOff(activePointer.midi);
+      if (nextMidi !== null) onNoteOn(nextMidi);
+      activePointerRef.current = { ...activePointer, midi: nextMidi };
+    },
+    [getPointerMidi, onNoteOff, onNoteOn],
+  );
+
+  const handlePointerRelease = useCallback(
+    (event: PointerEvent<HTMLDivElement>) => {
+      releasePointerNote(event.pointerId);
+    },
+    [releasePointerNote],
+  );
 
   useEffect(() => {
     const held = heldKeys.current;
@@ -75,10 +152,11 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
       if (event.repeat || disabled) return;
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName.toLowerCase();
-      if (tag === "input" || tag === "select" || tag === "textarea") return;
-
       const synthKey = SYNTH_KEYS.find((key) => key.key === event.key.toLowerCase());
+      if (tag === "input" || tag === "textarea" || (tag === "select" && !synthKey)) return;
       if (!synthKey || held.has(synthKey.key)) return;
+
+      if (tag === "select") event.preventDefault();
       held.add(synthKey.key);
       onNoteOn(midiFor(synthKey, octave));
     };
@@ -86,22 +164,37 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
     const handleUp = (event: KeyboardEvent) => {
       const synthKey = SYNTH_KEYS.find((key) => key.key === event.key.toLowerCase());
       if (!synthKey) return;
+      if ((event.target as HTMLElement | null)?.tagName.toLowerCase() === "select") event.preventDefault();
       held.delete(synthKey.key);
       onNoteOff(midiFor(synthKey, octave));
     };
 
-    window.addEventListener("keydown", handleDown);
-    window.addEventListener("keyup", handleUp);
+    window.addEventListener("keydown", handleDown, true);
+    window.addEventListener("keyup", handleUp, true);
 
     return () => {
-      window.removeEventListener("keydown", handleDown);
-      window.removeEventListener("keyup", handleUp);
+      window.removeEventListener("keydown", handleDown, true);
+      window.removeEventListener("keyup", handleUp, true);
       held.clear();
     };
   }, [disabled, octave, onNoteOff, onNoteOn]);
 
+  useEffect(() => {
+    if (disabled) releasePointerNote();
+  }, [disabled, releasePointerNote]);
+
+  useEffect(() => releasePointerNote, [releasePointerNote]);
+
   return (
-    <div className={styles.keyboard} aria-label="Synth keyboard">
+    <div
+      ref={keyboardRef}
+      className={styles.keyboard}
+      aria-label="Synth keyboard"
+      data-mobile-range="one-octave"
+      onPointerCancel={handlePointerRelease}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerRelease}
+    >
       <div className={styles.whiteKeys}>
         {whiteKeys.map((key) => {
           const midi = midiFor(key, octave);
@@ -111,19 +204,12 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
             <button
               aria-label={noteLabel(key, octave)}
               className={`${styles.whiteKey} ${pressed ? styles.keyDown : ""}`}
+              data-mobile-hidden={key.semitone > MOBILE_LAST_SEMITONE ? "true" : undefined}
+              data-synth-midi={midi}
               disabled={disabled}
               key={`${key.name}-${key.semitone}`}
               type="button"
-              onPointerCancel={() => onNoteOff(midi)}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                event.currentTarget.setPointerCapture(event.pointerId);
-                onNoteOn(midi);
-              }}
-              onPointerLeave={(event) => {
-                if (event.buttons) onNoteOff(midi);
-              }}
-              onPointerUp={() => onNoteOff(midi)}
+              onPointerDown={(event) => handlePointerDown(event, midi)}
             >
               <span>{key.key ? key.key.toUpperCase() : ""}</span>
               <small>{noteLabel(key, octave)}</small>
@@ -135,28 +221,29 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
       {blackKeys.map((key) => {
         const midi = midiFor(key, octave);
         const pressed = activeNotes.has(midi);
-        const whitesBefore = visualKeys.filter((candidate) => !candidate.black && candidate.semitone < key.semitone).length;
-        const leftPercent = ((whitesBefore - 0.34) / whiteKeys.length) * 100;
-        const widthPercent = (100 / whiteKeys.length) * 0.64;
+        const desktopPlacement = getBlackKeyPlacement(key, visualKeys, whiteKeys.length);
+        const mobilePlacement =
+          key.semitone <= MOBILE_LAST_SEMITONE
+            ? getBlackKeyPlacement(key, mobileVisualKeys, mobileWhiteKeyCount)
+            : desktopPlacement;
+        const keyStyle = {
+          "--black-key-left": `${desktopPlacement.leftPercent}%`,
+          "--black-key-width": `${desktopPlacement.widthPercent}%`,
+          "--mobile-black-key-left": `${mobilePlacement.leftPercent}%`,
+          "--mobile-black-key-width": `${mobilePlacement.widthPercent}%`,
+        } as CSSProperties;
 
         return (
           <button
             aria-label={noteLabel(key, octave)}
             className={`${styles.blackKey} ${pressed ? styles.keyDown : ""}`}
+            data-mobile-hidden={key.semitone > MOBILE_LAST_SEMITONE ? "true" : undefined}
+            data-synth-midi={midi}
             disabled={disabled}
             key={`${key.name}-${key.semitone}`}
-            style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
+            style={keyStyle}
             type="button"
-            onPointerCancel={() => onNoteOff(midi)}
-            onPointerDown={(event) => {
-              event.preventDefault();
-              event.currentTarget.setPointerCapture(event.pointerId);
-              onNoteOn(midi);
-            }}
-            onPointerLeave={(event) => {
-              if (event.buttons) onNoteOff(midi);
-            }}
-            onPointerUp={() => onNoteOff(midi)}
+            onPointerDown={(event) => handlePointerDown(event, midi)}
           >
             {key.key ? key.key.toUpperCase() : ""}
           </button>
