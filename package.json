@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "generate:og": "bash scripts/generate-og-image.sh",
     "do:droplets": "scripts/do/list-droplets.sh",
     "do:verify-taps": "scripts/do/verify-taps.sh"
   },

@@ -19,6 +19,32 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://sharkbite.andrew-boylan.com"),
   title: "Sharkbite",
   description: "A browser instrument that turns global echo servers into delay taps.",
+  openGraph: {
+    title: "Sharkbite",
+    description: "A browser instrument that turns global echo servers into delay taps.",
+    url: "https://sharkbite.andrew-boylan.com",
+    siteName: "Sharkbite",
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Sharkbite",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sharkbite",
+    description: "A browser instrument that turns global echo servers into delay taps.",
+    images: [
+      {
+        url: "/twitter-image.png",
+        alt: "Sharkbite",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
