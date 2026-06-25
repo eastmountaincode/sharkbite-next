@@ -65,8 +65,6 @@ export const SYNTH_MAX_OCTAVE = 6;
 export const SYNTH_WAVES: OscillatorType[] = ["triangle", "sine", "sawtooth", "square"];
 export const ENABLE_INPUT_AREA_HELPER = true;
 export const BUTTON_PRESS_VOLUME = 0.25;
-export const CONTROL_LAYOUT_STORAGE_KEY = "sharkbite-control-layout";
-export const INPUT_AREA_POLYGONS_STORAGE_KEY = "sharkbite-input-area-polygons";
 export const HELPER_PANEL_POSITION_STORAGE_KEY = "sharkbite-helper-panel-position";
 export const HELPER_PANEL_VIEWPORT_MARGIN = 10;
 export const MAX_INPUT_LEVEL = 100;
@@ -95,13 +93,13 @@ export const INPUT_HIGHLIGHT_POLYGON: AreaPoint[] = [
 export const CONTROL_LAYOUT_IDS: ControlLayoutId[] = ["logo", "wetDry", "inputLevel", "rich", "sf", "fra", "blr"];
 
 export const CONTROL_LAYOUT: Record<ControlLayoutId, AreaPoint> = {
-  logo: { x: 49, y: 27 },
-  wetDry: { x: 23, y: 48 },
-  inputLevel: { x: 73, y: 48 },
-  rich: { x: 23, y: 76 },
-  sf: { x: 36, y: 76 },
-  fra: { x: 64, y: 76 },
-  blr: { x: 77, y: 76 },
+  logo: { x: 49, y: 25 },
+  wetDry: { x: 23, y: 49 },
+  inputLevel: { x: 74, y: 49 },
+  rich: { x: 20, y: 76 },
+  sf: { x: 40, y: 76 },
+  fra: { x: 60, y: 76 },
+  blr: { x: 80, y: 76 },
 };
 
 export const INITIAL_TAP_ENABLED = TAPS.reduce(
@@ -160,66 +158,6 @@ export const formatControlLayoutConstant = (layout: Record<ControlLayoutId, Area
   `const CONTROL_LAYOUT: Record<ControlLayoutId, AreaPoint> = {\n${CONTROL_LAYOUT_IDS.map(
     (id) => `  ${id}: { x: ${layout[id].x}, y: ${layout[id].y} },`,
   ).join("\n")}\n};`;
-
-export const parseStoredControlLayout = (value: string | null) => {
-  if (!value) return null;
-
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (!isRecord(parsed)) return null;
-
-    const nextLayout = { ...CONTROL_LAYOUT };
-    for (const id of CONTROL_LAYOUT_IDS) {
-      const point = parsed[id];
-      if (point === undefined) continue;
-      if (!isRecord(point) || typeof point.x !== "number" || typeof point.y !== "number") return null;
-      if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
-
-      nextLayout[id] = {
-        x: clampAreaValue(point.x),
-        y: clampAreaValue(point.y),
-      };
-    }
-
-    return nextLayout;
-  } catch {
-    return null;
-  }
-};
-
-export const parseStoredAreaPoints = (value: unknown) => {
-  if (!Array.isArray(value) || value.length < 3) return null;
-
-  const points = value.map((point) => {
-    if (!isRecord(point) || typeof point.x !== "number" || typeof point.y !== "number") return null;
-    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
-
-    return {
-      x: clampAreaValue(point.x),
-      y: clampAreaValue(point.y),
-    };
-  });
-
-  if (points.some((point) => point === null)) return null;
-  return points as AreaPoint[];
-};
-
-export const parseStoredInputAreaPolygons = (value: string | null) => {
-  if (!value) return null;
-
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (!isRecord(parsed)) return null;
-
-    const hit = parseStoredAreaPoints(parsed.hit);
-    const highlight = parseStoredAreaPoints(parsed.highlight);
-    if (!hit && !highlight) return null;
-
-    return { hit, highlight };
-  } catch {
-    return null;
-  }
-};
 
 export const parseStoredHelperPanelPosition = (value: string | null) => {
   if (!value) return null;

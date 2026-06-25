@@ -18,17 +18,13 @@ import {
     clampAreaValue,
     clampHelperPanelPosition,
     CONTROL_LAYOUT,
-    CONTROL_LAYOUT_STORAGE_KEY,
     ENABLE_INPUT_AREA_HELPER,
     formatAreaConstant,
     formatControlLayoutConstant,
     HELPER_PANEL_POSITION_STORAGE_KEY,
-    INPUT_AREA_POLYGONS_STORAGE_KEY,
     INPUT_HIGHLIGHT_POLYGON,
     INPUT_HIT_POLYGON,
-    parseStoredControlLayout,
     parseStoredHelperPanelPosition,
-    parseStoredInputAreaPolygons,
 } from "./sharkbite-model";
 
 type UsePedalEditorArgs = {
@@ -56,17 +52,10 @@ export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }
     useEffect(() => {
         window.queueMicrotask(() => {
             try {
-                const storedControlLayout = parseStoredControlLayout(window.localStorage.getItem(CONTROL_LAYOUT_STORAGE_KEY));
-                const storedInputAreaPolygons = parseStoredInputAreaPolygons(
-                    window.localStorage.getItem(INPUT_AREA_POLYGONS_STORAGE_KEY),
-                );
                 const storedHelperPanelPosition = parseStoredHelperPanelPosition(
                     window.localStorage.getItem(HELPER_PANEL_POSITION_STORAGE_KEY),
                 );
 
-                if (storedControlLayout) setControlLayout(storedControlLayout);
-                if (storedInputAreaPolygons?.hit) setInputHitPolygon(storedInputAreaPolygons.hit);
-                if (storedInputAreaPolygons?.highlight) setInputHighlightPolygon(storedInputAreaPolygons.highlight);
                 if (storedHelperPanelPosition) setHelperPanelPosition(storedHelperPanelPosition);
             } catch {
                 // Helper persistence is non-critical; the checked-in layout remains the fallback.
@@ -75,32 +64,6 @@ export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }
             }
         });
     }, []);
-
-    useEffect(() => {
-        if (!storedHelperStateReady) return;
-
-        try {
-            window.localStorage.setItem(CONTROL_LAYOUT_STORAGE_KEY, JSON.stringify(controlLayout));
-        } catch {
-            // Ignore private-mode or quota failures; the in-session layout still works.
-        }
-    }, [controlLayout, storedHelperStateReady]);
-
-    useEffect(() => {
-        if (!storedHelperStateReady) return;
-
-        try {
-            window.localStorage.setItem(
-                INPUT_AREA_POLYGONS_STORAGE_KEY,
-                JSON.stringify({
-                    hit: inputHitPolygon,
-                    highlight: inputHighlightPolygon,
-                }),
-            );
-        } catch {
-            // Ignore private-mode or quota failures; the in-session polygons still work.
-        }
-    }, [inputHitPolygon, inputHighlightPolygon, storedHelperStateReady]);
 
     useEffect(() => {
         if (!storedHelperStateReady) return;

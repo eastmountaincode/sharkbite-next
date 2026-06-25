@@ -538,7 +538,7 @@
 
 .tapButtonLabel {
   display: block;
-  font-size: 2cqw;
+  font-size: 1.72cqw;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
@@ -558,11 +558,11 @@
 }
 
 .tapButtonDelayValue {
-  font-size: 1.68cqw;
+  font-size: 1.48cqw;
 }
 
 .tapButtonDelayLabel {
-  font-size: 1.14cqw;
+  font-size: 1.02cqw;
 }
 
 /* Input source modal */
