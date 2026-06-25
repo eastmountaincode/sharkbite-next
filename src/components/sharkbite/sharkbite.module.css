@@ -1,532 +1,964 @@
+/* Page shell and pedal image stage */
 .shell {
-  color: var(--foreground);
-  min-height: 100vh;
+  --corner-control-top: var(--stage-padding);
+  --pedal-max-width: 1240px;
+  --stage-padding: clamp(12px, 3vw, 40px);
+  align-content: center;
+  align-items: center;
+  background: var(--background);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  min-height: 100svh;
+  overflow: hidden;
+  padding: var(--stage-padding);
 }
 
-.topbar {
+.pedalStage {
   align-items: center;
-  background: var(--panel);
-  border: 1px solid var(--line);
   display: flex;
-  gap: 18px;
-  justify-content: space-between;
-  margin: 18px 18px 0;
-  min-height: 86px;
-  padding: 18px 22px;
-  position: sticky;
-  top: 12px;
+  justify-content: center;
+  width: 100%;
+}
+
+.pedalCanvas {
+  aspect-ratio: 7 / 5;
+  background-image: url("/assets/sharkbite/pedal-bg-no-logo.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  container-type: inline-size;
+  filter: drop-shadow(0 18px 28px rgba(36, 36, 36, 0.14));
+  max-width: var(--pedal-max-width);
+  position: relative;
+  width: min(100%, var(--pedal-max-width), calc((100svh - var(--stage-padding) * 2) * 1.4));
+}
+
+.infoToggle,
+.pianoToggle {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--line);
+  cursor: pointer;
+  font-family: var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
+  font-size: 38px;
+  font-weight: 850;
+  line-height: 0.95;
+  min-height: 0;
+  padding: 0 4px;
+  position: fixed;
+  top: var(--corner-control-top);
+}
+
+.infoToggle {
+  font-size: 28px;
+  left: var(--stage-padding);
+  line-height: 1;
+  z-index: 50;
+}
+
+.pianoToggle {
+  right: var(--stage-padding);
   z-index: 20;
 }
 
-.brand {
-  align-items: center;
-  display: flex;
-  gap: 12px;
-  min-width: 0;
+.infoToggle:hover,
+.infoToggle:focus-visible,
+.pianoToggle:hover,
+.pianoToggle:focus-visible {
+  opacity: 0.62;
 }
 
-.brand h1 {
-  font-size: clamp(28px, 5vw, 56px);
-  font-weight: 850;
-  letter-spacing: 0;
-  line-height: 0.9;
-  margin: 0;
+.infoToggle:focus-visible,
+.pianoToggle:focus-visible {
+  outline: none;
 }
 
-.brand p {
-  color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 0;
-  margin: 4px 0 0;
-}
-
-.actions {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.primaryButton,
-.secondaryButton {
-  align-items: center;
-  border: 1px solid var(--line);
-  display: inline-flex;
-  font-size: 11px;
-  font-weight: 850;
-  gap: 8px;
-  justify-content: center;
-  letter-spacing: 0;
-  min-height: 36px;
-  padding: 8px 13px;
-}
-
-.primaryButton {
-  background: var(--line);
-  color: var(--background);
-}
-
-.secondaryButton {
+.pianoPanel {
   background: var(--panel);
-  color: var(--foreground);
-}
-
-.primaryButton:not(:disabled):hover,
-.secondaryButton:not(:disabled):hover {
-  background: var(--line);
-  color: var(--panel);
-}
-
-.modeBadge {
-  border: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--foreground);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0;
-  padding: 7px 10px;
-}
-
-.content {
-  display: flex;
+  border: 2px solid var(--line);
+  box-shadow: 0 18px 38px rgba(15, 15, 15, 0.16);
+  color: var(--line);
+  display: none;
   flex-direction: column;
-  gap: 16px;
-  margin: 0 auto;
-  max-width: 1220px;
-  padding: 18px;
-}
-
-.module {
-  background: var(--panel);
-  border: 1px solid var(--line);
-}
-
-.moduleHeader {
-  align-items: center;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  display: flex;
+  font-family: var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
   gap: 14px;
-  min-height: 46px;
-  padding: 10px 16px;
+  padding: 18px;
+  width: min(100%, 420px);
 }
 
-.moduleHeader h2 {
-  font-size: 13px;
-  font-weight: 850;
-  letter-spacing: 0;
-  margin: 0;
+.pianoPanel[data-visible="true"] {
+  display: flex;
 }
 
-.moduleNumber,
-.moduleStatus {
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: 0;
-}
-
-.moduleStatus {
-  color: var(--muted);
-  margin-left: auto;
-}
-
-.moduleToolbar {
-  margin-left: auto;
-}
-
-.moduleToolbar + .moduleStatus {
-  margin-left: 0;
-}
-
-.moduleBody {
-  padding: 16px;
-}
-
-.controlGrid {
+.pianoControls {
   display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-.control {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  min-width: 0;
-}
-
-.controlLabel {
-  align-items: baseline;
-  color: var(--foreground);
-  display: flex;
-  font-size: 11px;
-  gap: 12px;
-  justify-content: space-between;
-  letter-spacing: 0;
-}
-
-.controlLabel b {
-  font-weight: 850;
-}
-
-.controlNote {
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0;
-}
-
-.controlWithMeter {
+.pianoControl {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.vu {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  height: 7px;
-  overflow: hidden;
-}
-
-.vu i {
-  background: var(--accent);
-  display: block;
-  height: 100%;
-  transition: width 80ms linear;
-  width: 0;
-}
-
-.synthToolbar {
-  align-items: end;
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(130px, 150px) minmax(140px, 180px) minmax(120px, 160px);
-}
-
-.stepperControl {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
   min-width: 0;
 }
 
-.stepper {
-  border: 1px solid var(--line);
-  display: grid;
-  grid-template-columns: 38px minmax(42px, 1fr) 38px;
-  min-height: 34px;
+.pianoControl > span {
+  font-size: 18px;
+  line-height: 0.95;
 }
 
-.stepperButton {
+.pianoControl select {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--line);
+  cursor: pointer;
+  font-family: var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
+  font-size: 20px;
+  height: 42px;
+  line-height: 1;
+  padding: 7px 9px 5px;
+  width: 100%;
+}
+
+.octaveStepper {
+  display: grid;
+  grid-template-columns: 42px minmax(42px, 1fr) 42px;
+  height: 42px;
+}
+
+.octaveStepper button,
+.octaveStepper strong {
   align-items: center;
   background: var(--panel);
-  border: 0;
-  color: var(--foreground);
-  cursor: pointer;
-  display: inline-flex;
+  border: 1px solid var(--line);
+  color: var(--line);
+  display: flex;
+  font-size: 21px;
+  font-weight: 400;
   justify-content: center;
+  line-height: 1;
   min-width: 0;
-  padding: 0;
 }
 
-.stepperButton:first-child {
-  border-right: 1px solid var(--line);
+.octaveStepper button + strong,
+.octaveStepper strong + button {
+  border-left: 0;
 }
 
-.stepperButton:last-child {
-  border-left: 1px solid var(--line);
-}
-
-.stepperButton:not(:disabled):hover {
+.octaveStepper button:hover:not(:disabled),
+.octaveStepper button:focus-visible {
   background: var(--line);
   color: var(--panel);
 }
 
-.stepperButton:disabled {
-  color: var(--muted);
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.stepperValue {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.38);
-  display: flex;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 850;
-  justify-content: center;
+.octaveStepper button:focus-visible {
+  outline: 2px solid var(--line);
+  outline-offset: 2px;
+  position: relative;
+  z-index: 1;
 }
 
 .keyboard {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  display: block;
-  height: clamp(136px, 18vw, 176px);
-  max-width: 760px;
-  overflow: hidden;
+  --white-key-count: 15;
+  height: 168px;
   position: relative;
-  touch-action: none;
-  user-select: none;
   width: 100%;
 }
 
 .whiteKeys {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(var(--white-key-count), minmax(0, 1fr));
   height: 100%;
+  position: relative;
+  width: 100%;
 }
 
 .whiteKey,
 .blackKey {
-  border: 0;
-  border-radius: 0;
-  cursor: pointer;
-  font: inherit;
-  padding: 0;
+  font-family: Helvetica, Arial, sans-serif;
+  touch-action: none;
+  user-select: none;
 }
 
 .whiteKey {
   align-items: center;
-  background: var(--panel);
-  border-right: 1px solid var(--line);
-  color: var(--foreground);
+  background: #fbfaf6;
+  border: 1px solid var(--line);
+  border-left: 0;
+  color: var(--line);
   display: flex;
   flex-direction: column;
-  height: 100%;
   justify-content: flex-end;
-  padding-bottom: 10px;
-  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 2px 4px;
 }
 
-.whiteKey:last-child {
-  border-right: 0;
+.whiteKey:first-child {
+  border-left: 1px solid var(--line);
 }
 
 .whiteKey span {
-  font-size: 11px;
-  font-weight: 850;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .whiteKey small {
-  color: var(--muted);
-  font-size: 9px;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  margin-top: 2px;
 }
 
 .blackKey {
+  align-items: flex-end;
   background: var(--line);
-  color: var(--panel);
   border: 1px solid var(--line);
-  font-size: 10px;
-  font-weight: 850;
-  height: 62%;
+  color: var(--panel);
+  display: flex;
+  font-size: 9px;
+  font-weight: 900;
+  height: 60%;
+  justify-content: center;
+  left: var(--black-key-left);
+  padding: 0 0 4px;
   position: absolute;
   top: 0;
-  transform: none;
+  width: var(--black-key-width);
   z-index: 2;
 }
 
-.keyDown.whiteKey {
-  background: var(--line);
-  color: var(--panel);
+.whiteKey.keyDown {
+  background: #d8cfb7;
 }
 
-.keyDown.blackKey {
-  background: var(--accent);
-  color: var(--foreground);
+.blackKey.keyDown {
+  background: #d8cfb7;
+  color: var(--line);
 }
 
 .whiteKey:disabled,
 .blackKey:disabled {
   cursor: not-allowed;
-  opacity: 1;
+  opacity: 0.42;
 }
 
-.tapList {
-  display: flex;
-  flex-direction: column;
-}
-
-.tapRow {
-  align-items: center;
-  border-bottom: 1px solid var(--line);
-  display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(150px, 1fr) 50px minmax(150px, 0.45fr);
-  min-height: 72px;
-  opacity: 0.48;
-  padding: 12px 0;
-}
-
-.tapRow:last-child {
-  border-bottom: 0;
-}
-
-.tapOn {
-  opacity: 1;
-}
-
-.tapIdentity {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-  min-width: 0;
-}
-
-.tapIdentity h3 {
-  font-size: 12px;
-  font-weight: 850;
-  letter-spacing: 0;
-  margin: 0;
-}
-
-.tapIdentity p {
-  color: var(--muted);
-  font-size: 11px;
-  margin: 4px 0 0;
-}
-
-.tapDot {
-  background: var(--background);
-  border: 1px solid var(--line);
-  display: block;
-  height: 9px;
-  width: 9px;
-}
-
-.tapDotLive {
-  background: var(--tap-color);
-}
-
-.switch {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  height: 24px;
-  position: relative;
-  width: 48px;
-}
-
-.switch::after {
-  background: var(--muted);
-  content: "";
-  height: 16px;
-  left: 2px;
+.pedalOverlay {
+  inset: 0;
+  pointer-events: none;
   position: absolute;
-  top: 2px;
-  transition: left 120ms ease, background 120ms ease;
-  width: 18px;
 }
 
-.switchOn::after {
-  background: var(--tap-color);
-  left: 24px;
-}
-
-.tapReadout {
-  align-items: center;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 76px minmax(58px, 68px);
-  justify-content: end;
-}
-
-.tapSignalPill {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  height: 24px;
+/* Accessibility utility */
+.srOnly {
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  height: 1px;
+  margin: -1px;
   overflow: hidden;
-  padding: 3px 6px;
-  width: 76px;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
-.tapSignalWaveform {
-  color: var(--tap-color);
-  display: block;
+/* Shared faceplate labels */
+.jackLabel {
+  color: #0f0f0f;
+  font-family: var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
+  font-size: 2.75cqw;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.inputJackLabel {
+  left: 74%;
+  top: 17%;
+  transform: translate(-50%, -50%) rotate(-1deg);
+}
+
+/* Input jack polygon hit area and hover highlight */
+.inputAreaSvg {
   height: 100%;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
   width: 100%;
 }
 
-.metric {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  min-height: 36px;
-  padding: 5px 8px;
-  text-align: center;
+.inputHighlightPolygon {
+  fill: rgba(36, 36, 36, 0.34);
+  mix-blend-mode: multiply;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.metric b {
+.inputHitPolygon {
+  cursor: pointer;
+  fill: transparent;
+  outline: none;
+  pointer-events: auto;
+  stroke: transparent;
+}
+
+.inputAreaEditorLayer {
+  pointer-events: none;
+}
+
+.inputAreaEditorPolygon {
+  fill: rgba(36, 36, 36, 0.1);
+  pointer-events: none;
+  stroke: rgba(36, 36, 36, 0.88);
+  stroke-dasharray: 0.8 0.7;
+  stroke-width: 0.24;
+  vector-effect: non-scaling-stroke;
+}
+
+.inputAreaEditorPointTarget {
+  cursor: grab;
+  fill: rgba(255, 255, 255, 0.001);
+  pointer-events: all;
+  stroke: transparent;
+}
+
+.inputAreaEditorPoint {
+  fill: var(--panel);
+  pointer-events: none;
+  stroke: var(--line);
+  stroke-width: 0.16;
+  vector-effect: non-scaling-stroke;
+}
+
+.pedalOverlay[data-input-active="true"] .inputHighlightPolygon {
+  opacity: 1;
+}
+
+/* Right-side input level knob */
+.knob {
+  aspect-ratio: 1;
+  background-image: url("/assets/sharkbite/input-level-knob-pointy-metal.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12000% 100%;
+  border: 0;
   display: block;
+  filter: drop-shadow(0 8px 8px rgba(15, 15, 15, 0.18));
+  inset: 0;
+  position: absolute;
+  /* 120-frame GarageBand pointy metal sprite, driven by --input-level-frame. */
+  background-position-x: calc(var(--input-level-frame, 0) * 100% / 119);
+  transition: filter 120ms ease;
+}
+
+.knobControl {
+  aspect-ratio: 1;
+  border: 0;
+  cursor: pointer;
+  left: var(--control-x);
+  outline: none;
+  pointer-events: auto;
+  position: absolute;
+  top: var(--control-y);
+  touch-action: none;
+  transform: translate(-50%, -50%);
+  user-select: none;
+  width: 13%;
+}
+
+.knobControl:hover .knob,
+.knobControl[data-dragging="true"] .knob {
+  filter: drop-shadow(0 8px 8px rgba(15, 15, 15, 0.18));
+}
+
+.knobControl[data-dragging="true"] {
+  cursor: grabbing;
+}
+
+/* Movable pedal logo */
+.pedalLogoControl {
+  left: var(--control-x);
+  pointer-events: none;
+  position: absolute;
+  top: var(--control-y);
+  transform: translate(-50%, -50%) rotate(-2deg);
+  user-select: none;
+  width: 23%;
+}
+
+.pedalLogoImage {
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+/* Label below the left-side wet/dry knob */
+.wetDryLabel {
+  left: var(--control-x);
+  pointer-events: none;
+  top: calc(var(--control-y) + 12%);
+  transform: translate(-50%, -50%) rotate(-1deg);
+}
+
+/* Label below the right-side input level knob */
+.inputLevelLabel {
+  left: var(--control-x);
+  pointer-events: none;
+  top: calc(var(--control-y) + 12%);
+  transform: translate(-50%, -50%) rotate(-1deg);
+}
+
+.inputLevelMeter {
+  background: rgba(15, 15, 15, 0.12);
+  border: 0.16cqw solid #0f0f0f;
+  border-radius: 999px;
+  display: block;
+  height: 0.74cqw;
+  left: var(--control-x);
+  opacity: 0.34;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  top: calc(var(--control-y) + 15.7%);
+  transform: translate(-50%, -50%) rotate(-1deg);
+  width: 10.4%;
+}
+
+.inputLevelMeter[data-active="true"] {
+  opacity: 1;
+}
+
+.inputLevelMeterFill {
+  background: #0f0f0f;
+  display: block;
+  height: 100%;
+  transform: scaleX(var(--input-meter-level, 0));
+  transform-origin: left center;
+  width: 100%;
+}
+
+/* Bottom-row global tap buttons */
+.tapButton {
+  align-items: center;
+  aspect-ratio: 1;
+  background: transparent;
+  border: 0;
+  color: #0f0f0f;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
+  gap: 0.9cqw;
+  justify-content: center;
+  left: var(--control-x);
+  outline: none;
+  padding: 0;
+  pointer-events: auto;
+  position: absolute;
+  top: var(--control-y);
+  transform: translate(-50%, -50%);
+  width: 8.8%;
+}
+
+.tapButton:focus,
+.tapButton:focus-visible {
+  outline: none;
+}
+
+.knobControl[data-helper-draggable="true"],
+.pedalLogoControl[data-helper-draggable="true"],
+.tapButton[data-helper-draggable="true"] {
+  cursor: grab;
+  outline: 1px dashed rgba(36, 36, 36, 0.82);
+  outline-offset: 0.6cqw;
+  pointer-events: auto;
+  z-index: 8;
+}
+
+.knobControl[data-helper-dragging="true"],
+.pedalLogoControl[data-helper-dragging="true"],
+.tapButton[data-helper-dragging="true"] {
+  cursor: grabbing;
+  outline-style: solid;
+}
+
+.tapButton:disabled {
+  cursor: default;
+  opacity: 0.74;
+}
+
+.tapButtonLight {
+  aspect-ratio: 1;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  display: block;
+  filter: drop-shadow(0 2px 2px rgba(15, 15, 15, 0.22));
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  top: -16%;
+  transform: translate(-50%, -50%);
+  width: 31%;
+}
+
+.tapButton[data-enabled="false"] .tapButtonLight {
+  background-image: url("/assets/sharkbite/red_light.png");
+}
+
+.tapButton[data-enabled="true"] .tapButtonLight {
+  background-image: url("/assets/sharkbite/green_light.png");
+}
+
+.tapButtonCap {
+  aspect-ratio: 1;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  display: block;
+  filter: drop-shadow(0 5px 5px rgba(15, 15, 15, 0.2));
+  width: 100%;
+}
+
+.tapButtonLeft .tapButtonCap {
+  background-image: url("/assets/sharkbite/left_button.png");
+}
+
+.tapButtonRight .tapButtonCap {
+  background-image: url("/assets/sharkbite/right_button.png");
+}
+
+.tapButtonLabel {
+  display: block;
+  font-size: 2cqw;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tapButtonDelay {
+  display: block;
+  line-height: 1;
+  min-height: 3.1cqw;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tapButtonDelayValue,
+.tapButtonDelayLabel {
+  display: block;
+}
+
+.tapButtonDelayValue {
+  font-size: 1.68cqw;
+}
+
+.tapButtonDelayLabel {
+  font-size: 1.14cqw;
+}
+
+/* Input source modal */
+.inputDialogBackdrop {
+  align-items: center;
+  background: rgba(15, 15, 15, 0.36);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 30;
+}
+
+.infoDialogBackdrop {
+  z-index: 60;
+}
+
+.inputDialog {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  box-shadow: 0 18px 50px rgba(15, 15, 15, 0.28);
+  color: var(--foreground);
+  max-width: calc(100vw - 28px);
+  padding: 22px 24px 24px;
+  width: 520px;
+}
+
+.infoDialog {
+  width: 560px;
+}
+
+.inputDialogHeader {
+  align-items: center;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 0 0 18px;
+}
+
+.inputDialogTitle {
+  color: var(--line);
+  font-family: var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 0.92;
+  margin: 0;
+}
+
+.iconButton {
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--foreground);
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  outline: none;
+  padding: 0;
+  width: 34px;
+}
+
+.iconButton:hover,
+.iconButton:focus-visible {
+  background: var(--line);
+  color: var(--panel);
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--line);
+  outline-offset: 2px;
+}
+
+.inputDialogClose {
+  flex: 0 0 auto;
+}
+
+.inputDialogBody {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.infoDialogBody {
+  color: var(--line);
+  display: flex;
+  flex-direction: column;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  gap: 14px;
+  line-height: 1.35;
+  padding: 0;
+  user-select: text;
+}
+
+.infoDialogBody p {
+  margin: 0;
+}
+
+.infoDialogBody a {
+  color: currentColor;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.infoDialogBody a:hover,
+.infoDialogBody a:focus-visible {
+  opacity: 0.66;
+}
+
+.infoCreator {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: flex-start;
+  margin-top: 4px;
+}
+
+.infoCreatorLinks {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.infoDialogBody .infoCreatorLink {
+  align-items: center;
+  color: currentColor;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  text-decoration: none;
+  width: 24px;
+}
+
+.infoCreatorLink svg {
+  display: block;
+  fill: currentColor;
+  height: 22px;
+  width: 22px;
+}
+
+/* Input polygon helper menu */
+.inputAreaHelperPanel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  bottom: 16px;
+  box-shadow: 0 12px 32px rgba(15, 15, 15, 0.22);
+  color: var(--foreground);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  position: fixed;
+  right: 16px;
+  width: 360px;
+  z-index: 45;
+}
+
+.inputAreaHelperPanel header {
+  align-items: baseline;
+  cursor: grab;
+  display: flex;
+  justify-content: space-between;
+  touch-action: none;
+  user-select: none;
+}
+
+.inputAreaHelperPanel[data-dragging="true"] header {
+  cursor: grabbing;
+}
+
+.inputAreaHelperPanel header b {
   font-size: 13px;
-  font-variant-numeric: tabular-nums;
   font-weight: 850;
 }
 
-.metric span {
+.inputAreaHelperPanel header span,
+.inputAreaHelperPanel p {
   color: var(--muted);
-  display: block;
-  font-size: 9px;
-  letter-spacing: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 0;
 }
 
-.statusLine {
+.inputAreaHelperTabs,
+.inputAreaHelperActions {
+  display: flex;
+  gap: 6px;
+}
+
+.inputAreaHelperTabs button,
+.inputAreaHelperActions button {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--foreground);
+  flex: 1 1 0;
+  font-size: 11px;
+  min-height: 30px;
+  padding: 6px 8px;
+}
+
+.inputAreaHelperTabs button:hover,
+.inputAreaHelperActions button:hover,
+.inputAreaHelperTabs button:focus-visible,
+.inputAreaHelperActions button:focus-visible,
+.inputAreaHelperTabActive {
+  background: var(--line);
+  color: var(--panel);
+}
+
+.inputAreaHelperPanel textarea {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--foreground);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  height: 128px;
+  line-height: 1.35;
+  padding: 8px;
+  resize: vertical;
+  user-select: text;
+}
+
+/* Start splash screen */
+.startScreen {
   align-items: center;
-  color: var(--muted);
+  background: var(--background);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 40;
+}
+
+.startPanel {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.startLogo {
+  display: block;
+  height: auto;
+  max-width: min(58vw, 430px);
+  width: min(72vw, 430px);
+}
+
+.startButton {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--line);
+  display: inline-flex;
+  font-family: var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
+  font-size: 76px;
+  font-weight: 850;
+  justify-content: center;
+  line-height: 0.92;
+  min-height: 0;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.startButton:not(:disabled):hover,
+.startButton:not(:disabled):focus-visible {
+  opacity: 0.62;
+}
+
+/* Shared modal form controls */
+.inputControl {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.inputControl span:not(.srOnly) {
+  align-items: baseline;
   display: flex;
   font-size: 11px;
   gap: 12px;
   justify-content: space-between;
-  letter-spacing: 0;
-  min-height: 28px;
 }
 
-@media (max-width: 920px) {
-  .topbar {
-    align-items: flex-start;
-    flex-direction: column;
-    margin: 12px 12px 0;
+.inputControl select {
+  cursor: pointer;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.2;
+  min-height: 48px;
+  padding: 9px 12px;
+  width: 100%;
+}
+
+@media (min-width: 761px) {
+  .shell {
+    --corner-control-top: clamp(12px, 2.1vw, 30px);
   }
 
-  .actions {
-    justify-content: flex-start;
+  .shell[data-piano-open="true"] {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
     width: 100%;
   }
 
-  .synthToolbar {
-    grid-template-columns: 1fr;
+  .shell[data-piano-open="true"] .pedalStage {
+    justify-self: end;
   }
 
-  .moduleHeader {
-    align-items: stretch;
-    flex-direction: column;
+  .shell[data-piano-open="true"] .pedalCanvas {
+    width: min(100%, var(--pedal-max-width), calc((100svh - var(--stage-padding) * 2) * 1.4));
   }
 
-  .moduleToolbar,
-  .moduleStatus {
-    margin-left: 0;
-  }
-
-  .tapRow {
-    align-items: stretch;
-    grid-template-columns: 1fr;
-  }
-
-  .tapReadout {
-    grid-template-columns: 76px minmax(58px, 68px);
-    justify-content: start;
+  .shell[data-piano-open="true"] .pianoPanel {
+    justify-self: start;
   }
 }
 
-@media (max-width: 460px) {
-  .content {
-    padding: 12px;
+@media (max-width: 760px) {
+  .shell {
+    align-content: start;
+    gap: 14px;
+    overflow: auto;
+    padding-inline: max(var(--stage-padding), 28px);
+    padding-top: max(var(--stage-padding), 60px);
+  }
+
+  .pianoPanel {
+    max-width: 360px;
+    padding: 14px;
+    width: 100%;
+  }
+
+  .pianoControls {
+    grid-template-columns: 1fr;
   }
 
   .keyboard {
-    height: 124px;
+    --white-key-count: 7;
+    height: 150px;
   }
 
-  .moduleBody {
-    overflow-x: auto;
+  .keyboard[data-mobile-range="one-octave"] [data-mobile-hidden="true"] {
+    display: none;
+  }
+
+  .keyboard[data-mobile-range="one-octave"] .blackKey {
+    left: var(--mobile-black-key-left);
+    width: var(--mobile-black-key-width);
+  }
+
+  .keyboard[data-mobile-range="one-octave"] .whiteKey span,
+  .keyboard[data-mobile-range="one-octave"] .blackKey {
+    font-size: 10px;
+  }
+
+  .keyboard[data-mobile-range="one-octave"] .whiteKey small {
+    font-size: 9px;
+  }
+}
+
+/* Small viewport adjustments */
+@media (max-width: 620px) {
+  .shell {
+    overflow: auto;
+  }
+
+  .inputAreaHelperPanel {
+    bottom: 10px;
+    right: 10px;
+    width: calc(100vw - 20px);
+  }
+
+  .startButton {
+    font-size: 54px;
+  }
+}
+
+@media (max-width: 461px) {
+  .shell {
+    padding-top: max(var(--stage-padding), 96px);
+  }
+
+  .infoToggle {
+    left: var(--stage-padding);
+    right: auto;
+  }
+
+  .pianoToggle {
+    left: auto;
+    right: var(--stage-padding);
+    top: calc(var(--corner-control-top) + 32px);
   }
 }

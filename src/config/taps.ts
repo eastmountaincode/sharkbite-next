@@ -30,7 +30,6 @@ export const TAPS: TapConfig[] = [
     name: "Frankfurt",
     ip: "64.226.68.99",
     color: "#4f78d8",
-    defaultEnabled: true,
     roundTripHintMs: 92,
   },
   {

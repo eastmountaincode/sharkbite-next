@@ -10,7 +10,7 @@ type TapSignalScopeProps = {
   tapId: TapId;
 };
 
-const WAVEFORM_DECAY_MS = 520;
+const WAVEFORM_DECAY_MS = 180;
 const WAVEFORM_BOOST = 2.2;
 
 function resizeCanvas(canvas: HTMLCanvasElement) {

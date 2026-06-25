@@ -6,6 +6,8 @@ import type { BufferMode, EngineStatus, TapMetricsUpdate, TapRuntimeSettings } f
 
 type BrowserWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
 const RTT_METRICS_MS = 250;
+const SYNTH_VOICE_SUSTAIN_RATIO = 0.7;
+const SYNTH_VOICE_REBALANCE_SECONDS = 0.035;
 
 type TapRuntime = TapConfig & {
   enabled: boolean;
@@ -62,6 +64,7 @@ export class AudioEngine {
   private dryGain: GainNode | null = null;
   private wetGain: GainNode | null = null;
   private masterGain: GainNode | null = null;
+  private masterLimiter: DynamicsCompressorNode | null = null;
   private sourceBus: GainNode | null = null;
   private synthGain: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
@@ -139,6 +142,7 @@ export class AudioEngine {
     this.dryGain = this.ctx.createGain();
     this.wetGain = this.ctx.createGain();
     this.masterGain = this.ctx.createGain();
+    this.masterLimiter = this.ctx.createDynamicsCompressor();
     this.sourceBus = this.ctx.createGain();
     this.synthGain = this.ctx.createGain();
     this.analyser = this.ctx.createAnalyser();
@@ -146,6 +150,11 @@ export class AudioEngine {
 
     this.sourceBus.gain.value = 1;
     this.synthGain.gain.value = this.synthLevel;
+    this.masterLimiter.threshold.value = -6;
+    this.masterLimiter.knee.value = 18;
+    this.masterLimiter.ratio.value = 12;
+    this.masterLimiter.attack.value = 0.003;
+    this.masterLimiter.release.value = 0.16;
     this.analyser.fftSize = 512;
     this.captureNode.port.postMessage({ frameLength: this.frameLength });
     this.captureNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
@@ -157,7 +166,8 @@ export class AudioEngine {
     this.sourceBus.connect(this.captureNode);
     this.dryGain.connect(this.masterGain);
     this.wetGain.connect(this.masterGain);
-    this.masterGain.connect(this.ctx.destination);
+    this.masterGain.connect(this.masterLimiter);
+    this.masterLimiter.connect(this.ctx.destination);
     this.synthGain.connect(this.sourceBus);
 
     const captureSink = this.ctx.createGain();
@@ -258,6 +268,7 @@ export class AudioEngine {
     this.synthWave = wave;
     this.synthLevel = level;
     if (this.synthGain) this.synthGain.gain.value = level;
+    this.rebalanceSynthVoices();
   }
 
   setTapSettings(id: TapId, settings: TapRuntimeSettings) {
@@ -294,17 +305,20 @@ export class AudioEngine {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     const now = this.ctx.currentTime;
-    const peak = Math.max(0.0001, this.synthLevel);
+    const nextVoiceCount = this.activeVoices.size + 1;
+    const peak = this.voicePeakForCount(nextVoiceCount);
+    const sustain = this.voiceSustainForCount(nextVoiceCount);
 
     osc.type = this.synthWave;
     osc.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.exponentialRampToValueAtTime(peak, now + 0.012);
-    gain.gain.exponentialRampToValueAtTime(peak * 0.7, now + 0.18);
+    gain.gain.exponentialRampToValueAtTime(sustain, now + 0.18);
     osc.connect(gain);
     gain.connect(this.synthGain);
     osc.start();
     this.activeVoices.set(midi, { osc, gain });
+    this.rebalanceSynthVoices(midi);
   }
 
   noteOff(midi: number) {
@@ -319,12 +333,36 @@ export class AudioEngine {
       voice.gain.gain.setValueAtTime(Math.max(0.0001, voice.gain.gain.value), now);
       voice.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
       voice.osc.stop(now + 0.15);
+      this.rebalanceSynthVoices();
     } catch {
       try {
         voice.osc.stop();
       } catch {
         // Already stopped.
       }
+    }
+  }
+
+  private voicePeakForCount(count: number) {
+    return Math.max(0.0001, this.synthLevel / Math.sqrt(Math.max(1, count)));
+  }
+
+  private voiceSustainForCount(count: number) {
+    return this.voicePeakForCount(count) * SYNTH_VOICE_SUSTAIN_RATIO;
+  }
+
+  private rebalanceSynthVoices(exceptMidi?: number) {
+    if (!this.ctx || this.activeVoices.size === 0) return;
+
+    const now = this.ctx.currentTime;
+    const sustain = this.voiceSustainForCount(this.activeVoices.size);
+
+    for (const [midi, voice] of this.activeVoices) {
+      if (midi === exceptMidi) continue;
+
+      voice.gain.gain.cancelScheduledValues(now);
+      voice.gain.gain.setValueAtTime(Math.max(0.0001, voice.gain.gain.value), now);
+      voice.gain.gain.linearRampToValueAtTime(sustain, now + SYNTH_VOICE_REBALANCE_SECONDS);
     }
   }
 
