@@ -46,11 +46,16 @@
   font-family: var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
   font-size: 38px;
   font-weight: 850;
-  line-height: 0.95;
+  line-height: 1.05;
   min-height: 0;
   padding: 0 4px;
   position: fixed;
+  touch-action: manipulation;
   top: var(--corner-control-top);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .infoToggle {
@@ -167,6 +172,8 @@
   --white-key-count: 15;
   height: 168px;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
   width: 100%;
 }
 
@@ -181,6 +188,8 @@
 .whiteKey,
 .blackKey {
   font-family: Helvetica, Arial, sans-serif;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   touch-action: none;
   user-select: none;
 }
@@ -231,6 +240,14 @@
   top: 0;
   width: var(--black-key-width);
   z-index: 2;
+}
+
+.blackKey span {
+  display: inline;
+}
+
+.blackKey small {
+  display: none;
 }
 
 .whiteKey.keyDown {
@@ -888,11 +905,18 @@
 
 @media (max-width: 760px) {
   .shell {
+    --corner-control-top: calc(env(safe-area-inset-top, 0px) + 20px);
+    --stage-padding: clamp(10px, 2.8vw, 18px);
     align-content: start;
-    gap: 14px;
+    gap: 12px;
     overflow: auto;
-    padding-inline: max(var(--stage-padding), 28px);
-    padding-top: max(var(--stage-padding), 60px);
+    padding-bottom: max(var(--stage-padding), calc(env(safe-area-inset-bottom, 0px) + 14px));
+    padding-inline: max(var(--stage-padding), 12px);
+    padding-top: max(var(--stage-padding), calc(env(safe-area-inset-top, 0px) + 76px));
+  }
+
+  .pedalCanvas {
+    width: min(100%, var(--pedal-max-width));
   }
 
   .pianoPanel {
@@ -924,8 +948,24 @@
     font-size: 10px;
   }
 
+  .keyboard[data-mobile-range="one-octave"] .whiteKey span {
+    display: none;
+  }
+
   .keyboard[data-mobile-range="one-octave"] .whiteKey small {
+    font-size: 11px;
+    margin-top: 0;
+  }
+
+  .keyboard[data-mobile-range="one-octave"] .blackKey span {
+    display: none;
+  }
+
+  .keyboard[data-mobile-range="one-octave"] .blackKey small {
+    color: var(--panel);
+    display: inline;
     font-size: 9px;
+    line-height: 1;
   }
 }
 
@@ -948,7 +988,7 @@
 
 @media (max-width: 461px) {
   .shell {
-    padding-top: max(var(--stage-padding), 96px);
+    padding-top: max(var(--stage-padding), calc(env(safe-area-inset-top, 0px) + 108px));
   }
 
   .infoToggle {
@@ -959,6 +999,6 @@
   .pianoToggle {
     left: auto;
     right: var(--stage-padding);
-    top: calc(var(--corner-control-top) + 32px);
+    top: calc(var(--corner-control-top) + 34px);
   }
 }

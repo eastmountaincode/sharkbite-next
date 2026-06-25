@@ -23,6 +23,7 @@ export function TopControls({
           aria-expanded={infoDialogOpen}
           className={styles.infoToggle}
           type="button"
+          onContextMenu={(event) => event.preventDefault()}
           onClick={onOpenInfo}
         >
           More Info
@@ -33,6 +34,7 @@ export function TopControls({
         aria-controls="sharkbite-piano"
         className={styles.pianoToggle}
         type="button"
+        onContextMenu={(event) => event.preventDefault()}
         onClick={onTogglePiano}
       >
         {pianoVisible ? "Hide Piano" : "Show Piano"}

@@ -66,7 +66,8 @@ function getBlackKeyPlacement(key: SynthKey, visualKeys: SynthKey[], whiteKeyCou
 export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteOff }: SynthKeyboardProps) {
   const keyboardRef = useRef<HTMLDivElement | null>(null);
   const heldKeys = useRef(new Set<string>());
-  const activePointerRef = useRef<{ pointerId: number; midi: number | null } | null>(null);
+  const activePointersRef = useRef(new Map<number, number | null>());
+  const activePointerMidiCountsRef = useRef(new Map<number, number>());
   const visualKeys = useMemo(
     () =>
       Array.from({ length: 25 }, (_, semitone) => ({
@@ -88,16 +89,61 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
     [mobileVisualKeys],
   );
 
-  const releasePointerNote = useCallback(
-    (pointerId?: number) => {
-      const activePointer = activePointerRef.current;
-      if (!activePointer || (pointerId !== undefined && activePointer.pointerId !== pointerId)) return;
+  const removePointerMidi = useCallback(
+    (midi: number | null) => {
+      if (midi === null) return;
 
-      if (activePointer.midi !== null) onNoteOff(activePointer.midi);
-      activePointerRef.current = null;
+      const activePointerMidiCounts = activePointerMidiCountsRef.current;
+      const nextCount = (activePointerMidiCounts.get(midi) ?? 0) - 1;
+
+      if (nextCount <= 0) {
+        activePointerMidiCounts.delete(midi);
+        onNoteOff(midi);
+        return;
+      }
+
+      activePointerMidiCounts.set(midi, nextCount);
     },
     [onNoteOff],
   );
+
+  const setPointerMidi = useCallback(
+    (pointerId: number, midi: number | null) => {
+      const activePointers = activePointersRef.current;
+      const previousMidi = activePointers.get(pointerId);
+      if (previousMidi === midi) return;
+
+      removePointerMidi(previousMidi ?? null);
+      activePointers.set(pointerId, midi);
+
+      if (midi === null) return;
+
+      const activePointerMidiCounts = activePointerMidiCountsRef.current;
+      const previousCount = activePointerMidiCounts.get(midi) ?? 0;
+      activePointerMidiCounts.set(midi, previousCount + 1);
+      if (previousCount === 0) onNoteOn(midi);
+    },
+    [onNoteOn, removePointerMidi],
+  );
+
+  const releasePointerNote = useCallback(
+    (pointerId: number) => {
+      if (!activePointersRef.current.has(pointerId)) return;
+
+      removePointerMidi(activePointersRef.current.get(pointerId) ?? null);
+      activePointersRef.current.delete(pointerId);
+    },
+    [removePointerMidi],
+  );
+
+  const releaseAllPointerNotes = useCallback(() => {
+    for (const midi of activePointerMidiCountsRef.current.keys()) {
+      onNoteOff(midi);
+    }
+
+    activePointersRef.current.clear();
+    activePointerMidiCountsRef.current.clear();
+  }, [onNoteOff]);
 
   const getPointerMidi = useCallback((event: PointerEvent) => {
     const keyboard = keyboardRef.current;
@@ -115,27 +161,20 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
       if (disabled || event.button !== 0) return;
 
       event.preventDefault();
-      releasePointerNote();
-      activePointerRef.current = { pointerId: event.pointerId, midi };
       event.currentTarget.setPointerCapture(event.pointerId);
-      onNoteOn(midi);
+      setPointerMidi(event.pointerId, midi);
     },
-    [disabled, onNoteOn, releasePointerNote],
+    [disabled, setPointerMidi],
   );
 
   const handlePointerMove = useCallback(
     (event: PointerEvent<HTMLDivElement>) => {
-      const activePointer = activePointerRef.current;
-      if (!activePointer || activePointer.pointerId !== event.pointerId) return;
+      if (!activePointersRef.current.has(event.pointerId)) return;
 
       const nextMidi = getPointerMidi(event);
-      if (nextMidi === activePointer.midi) return;
-
-      if (activePointer.midi !== null) onNoteOff(activePointer.midi);
-      if (nextMidi !== null) onNoteOn(nextMidi);
-      activePointerRef.current = { ...activePointer, midi: nextMidi };
+      setPointerMidi(event.pointerId, nextMidi);
     },
-    [getPointerMidi, onNoteOff, onNoteOn],
+    [getPointerMidi, setPointerMidi],
   );
 
   const handlePointerRelease = useCallback(
@@ -180,10 +219,10 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
   }, [disabled, octave, onNoteOff, onNoteOn]);
 
   useEffect(() => {
-    if (disabled) releasePointerNote();
-  }, [disabled, releasePointerNote]);
+    if (disabled) releaseAllPointerNotes();
+  }, [disabled, releaseAllPointerNotes]);
 
-  useEffect(() => releasePointerNote, [releasePointerNote]);
+  useEffect(() => releaseAllPointerNotes, [releaseAllPointerNotes]);
 
   return (
     <div
@@ -192,6 +231,7 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
       aria-label="Synth keyboard"
       data-mobile-range="one-octave"
       onPointerCancel={handlePointerRelease}
+      onContextMenu={(event) => event.preventDefault()}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerRelease}
     >
@@ -245,7 +285,8 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
             type="button"
             onPointerDown={(event) => handlePointerDown(event, midi)}
           >
-            {key.key ? key.key.toUpperCase() : ""}
+            <span>{key.key ? key.key.toUpperCase() : ""}</span>
+            <small>{noteLabel(key, octave)}</small>
           </button>
         );
       })}
