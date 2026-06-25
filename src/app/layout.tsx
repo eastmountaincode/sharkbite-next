@@ -15,13 +15,16 @@ const botch = localFont({
   variable: "--font-botch",
 });
 
+const metadataTitle = "Sharkbite - Internet Delay Pedal";
+const metadataDescription = "A website that turns the internet into a delay pedal.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://sharkbite.andrew-boylan.com"),
-  title: "Sharkbite",
-  description: "A browser instrument that turns global echo servers into delay taps.",
+  title: metadataTitle,
+  description: metadataDescription,
   openGraph: {
-    title: "Sharkbite",
-    description: "A browser instrument that turns global echo servers into delay taps.",
+    title: metadataTitle,
+    description: metadataDescription,
     url: "https://sharkbite.andrew-boylan.com",
     siteName: "Sharkbite",
     images: [
@@ -36,8 +39,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sharkbite",
-    description: "A browser instrument that turns global echo servers into delay taps.",
+    title: metadataTitle,
+    description: metadataDescription,
     images: [
       {
         url: "/twitter-image.png",
