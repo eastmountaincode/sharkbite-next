@@ -48,6 +48,7 @@
   font-weight: 850;
   line-height: 1.05;
   min-height: 0;
+  overflow: visible;
   padding: 0 4px;
   position: fixed;
   touch-action: manipulation;
@@ -914,6 +915,16 @@
     width: 100%;
   }
 
+  .infoToggle,
+  .pianoToggle {
+    line-height: 1.22;
+    padding-block: 6px 2px;
+  }
+
+  .infoToggle {
+    line-height: 1.18;
+  }
+
   .pianoControls {
     grid-template-columns: 1fr;
   }
@@ -965,7 +976,7 @@
 
 @media (max-width: 461px) {
   .shell {
-    padding-top: max(var(--stage-padding), calc(env(safe-area-inset-top, 0px) + 108px));
+    padding-top: max(var(--stage-padding), calc(env(safe-area-inset-top, 0px) + 116px));
   }
 
   .infoToggle {
