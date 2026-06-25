@@ -252,7 +252,6 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
               onPointerDown={(event) => handlePointerDown(event, midi)}
             >
               <span>{key.key ? key.key.toUpperCase() : ""}</span>
-              <small>{noteLabel(key, octave)}</small>
             </button>
           );
         })}
@@ -286,7 +285,6 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
             onPointerDown={(event) => handlePointerDown(event, midi)}
           >
             <span>{key.key ? key.key.toUpperCase() : ""}</span>
-            <small>{noteLabel(key, octave)}</small>
           </button>
         );
       })}
