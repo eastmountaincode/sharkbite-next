@@ -50,6 +50,8 @@ export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }
     const [storedHelperStateReady, setStoredHelperStateReady] = useState(false);
 
     useEffect(() => {
+        if (!ENABLE_INPUT_AREA_HELPER) return;
+
         window.queueMicrotask(() => {
             try {
                 const storedHelperPanelPosition = parseStoredHelperPanelPosition(
@@ -66,6 +68,7 @@ export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }
     }, []);
 
     useEffect(() => {
+        if (!ENABLE_INPUT_AREA_HELPER) return;
         if (!storedHelperStateReady) return;
 
         try {

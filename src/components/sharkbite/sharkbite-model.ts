@@ -63,7 +63,7 @@ export const SYNTH_DEFAULT_OCTAVE = 4;
 export const SYNTH_MIN_OCTAVE = 1;
 export const SYNTH_MAX_OCTAVE = 6;
 export const SYNTH_WAVES: OscillatorType[] = ["triangle", "sine", "sawtooth", "square"];
-export const ENABLE_INPUT_AREA_HELPER = true;
+export const ENABLE_INPUT_AREA_HELPER = false;
 export const BUTTON_PRESS_VOLUME = 0.25;
 export const HELPER_PANEL_POSITION_STORAGE_KEY = "sharkbite-helper-panel-position";
 export const HELPER_PANEL_VIEWPORT_MARGIN = 10;
@@ -84,18 +84,20 @@ export const INPUT_HIT_POLYGON: AreaPoint[] = [
 ];
 
 export const INPUT_HIGHLIGHT_POLYGON: AreaPoint[] = [
-  { x: 65.2, y: 6.5 },
-  { x: 82.1, y: 6.7 },
-  { x: 82.9, y: 22.3 },
-  { x: 65.0, y: 22.5 },
+  { x: 66.8, y: 6.8 },
+  { x: 81.0, y: 6.8 },
+  { x: 81.8, y: 11.4 },
+  { x: 79.2, y: 14.1 },
+  { x: 67.4, y: 14.0 },
+  { x: 65.8, y: 10.7 },
 ];
 
 export const CONTROL_LAYOUT_IDS: ControlLayoutId[] = ["logo", "wetDry", "inputLevel", "rich", "sf", "fra", "blr"];
 
 export const CONTROL_LAYOUT: Record<ControlLayoutId, AreaPoint> = {
-  logo: { x: 49, y: 25 },
-  wetDry: { x: 23, y: 49 },
-  inputLevel: { x: 74, y: 49 },
+  logo: { x: 49, y: 34 },
+  wetDry: { x: 23, y: 45.5 },
+  inputLevel: { x: 74, y: 45.5 },
   rich: { x: 20, y: 76 },
   sf: { x: 40, y: 76 },
   fra: { x: 60, y: 76 },
