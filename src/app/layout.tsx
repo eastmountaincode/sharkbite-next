@@ -16,6 +16,7 @@ const botch = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://sharkbite.andrew-boylan.com"),
   title: "Sharkbite",
   description: "A browser instrument that turns global echo servers into delay taps.",
 };
