@@ -63,7 +63,9 @@ export const SYNTH_DEFAULT_OCTAVE = 4;
 export const SYNTH_MIN_OCTAVE = 1;
 export const SYNTH_MAX_OCTAVE = 6;
 export const SYNTH_WAVES: OscillatorType[] = ["triangle", "sine", "sawtooth", "square"];
-export const ENABLE_INPUT_AREA_HELPER = false;
+export const ENABLE_INPUT_AREA_HELPER =
+  process.env.NEXT_PUBLIC_SHARKBITE_ENABLE_HELPER === "true" ||
+  (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_SHARKBITE_ENABLE_HELPER !== "false");
 export const BUTTON_PRESS_VOLUME = 0.25;
 export const HELPER_PANEL_POSITION_STORAGE_KEY = "sharkbite-helper-panel-position";
 export const HELPER_PANEL_VIEWPORT_MARGIN = 10;
@@ -84,24 +86,26 @@ export const INPUT_HIT_POLYGON: AreaPoint[] = [
 ];
 
 export const INPUT_HIGHLIGHT_POLYGON: AreaPoint[] = [
-  { x: 66.8, y: 6.8 },
-  { x: 81.0, y: 6.8 },
-  { x: 81.8, y: 11.4 },
-  { x: 79.2, y: 14.1 },
-  { x: 67.4, y: 14.0 },
-  { x: 65.8, y: 10.7 },
+  { x: 76.6, y: 8.7 },
+  { x: 76.7, y: 9.7 },
+  { x: 78.9, y: 9.8 },
+  { x: 79.1, y: 11.4 },
+  { x: 68.3, y: 12.1 },
+  { x: 68.6, y: 10.3 },
+  { x: 70.0, y: 10.5 },
+  { x: 70.1, y: 9.1 },
 ];
 
 export const CONTROL_LAYOUT_IDS: ControlLayoutId[] = ["logo", "wetDry", "inputLevel", "rich", "sf", "fra", "blr"];
 
 export const CONTROL_LAYOUT: Record<ControlLayoutId, AreaPoint> = {
-  logo: { x: 49, y: 34 },
-  wetDry: { x: 23, y: 45.5 },
-  inputLevel: { x: 74, y: 45.5 },
-  rich: { x: 20, y: 76 },
-  sf: { x: 40, y: 76 },
-  fra: { x: 60, y: 76 },
-  blr: { x: 80, y: 76 },
+  logo: { x: 49, y: 41.5 },
+  wetDry: { x: 22.1, y: 35.4 },
+  inputLevel: { x: 77.4, y: 35.7 },
+  rich: { x: 20, y: 74.1 },
+  sf: { x: 39.9, y: 74.4 },
+  fra: { x: 60, y: 74.3 },
+  blr: { x: 80, y: 74.2 },
 };
 
 export const INITIAL_TAP_ENABLED = TAPS.reduce(
