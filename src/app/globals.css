@@ -100,10 +100,16 @@ input[type="range"]::-moz-range-thumb {
 }
 
 select {
-  background: var(--panel);
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: var(--panel);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23242424' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 12px 8px;
   border: 1px solid var(--line);
   border-radius: 0;
   color: var(--foreground);
   min-height: 34px;
-  padding: 6px 10px;
+  padding: 6px 36px 6px 10px;
 }

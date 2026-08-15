@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type PointerEvent, useCallback, useEffect, useMemo, useRef } from "react";
+import { type CSSProperties, type PointerEvent, useCallback, useEffect, useRef } from "react";
 import styles from "./sharkbite.module.css";
 
 export type SynthKey = {
@@ -26,9 +26,8 @@ export const SYNTH_KEYS: SynthKey[] = [
   { name: "C", semitone: 12, black: false, key: "k" },
 ];
 
-const BLACK_SEMITONES = new Set([1, 3, 6, 8, 10]);
-const KEY_BINDINGS_BY_SEMITONE = new Map(SYNTH_KEYS.map((key) => [key.semitone, key]));
-const MOBILE_LAST_SEMITONE = 11;
+const WHITE_KEYS = SYNTH_KEYS.filter((key) => !key.black);
+const BLACK_KEYS = SYNTH_KEYS.filter((key) => key.black);
 
 type SynthKeyboardProps = {
   octave: number;
@@ -46,14 +45,6 @@ function noteLabel(key: SynthKey, octave: number) {
   return `${key.name}${octave + Math.floor(key.semitone / 12)}`;
 }
 
-function isBlackKey(semitone: number) {
-  return BLACK_SEMITONES.has(semitone % 12);
-}
-
-function noteNameFor(semitone: number) {
-  return SYNTH_KEYS.find((key) => key.semitone === semitone % 12)?.name ?? "C";
-}
-
 function getBlackKeyPlacement(key: SynthKey, visualKeys: SynthKey[], whiteKeyCount: number) {
   const whitesBefore = visualKeys.filter((candidate) => !candidate.black && candidate.semitone < key.semitone).length;
 
@@ -68,26 +59,6 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
   const heldKeys = useRef(new Set<string>());
   const activePointersRef = useRef(new Map<number, number | null>());
   const activePointerMidiCountsRef = useRef(new Map<number, number>());
-  const visualKeys = useMemo(
-    () =>
-      Array.from({ length: 25 }, (_, semitone) => ({
-        semitone,
-        name: noteNameFor(semitone),
-        black: isBlackKey(semitone),
-        key: KEY_BINDINGS_BY_SEMITONE.get(semitone)?.key ?? "",
-      })),
-    [],
-  );
-  const whiteKeys = useMemo(() => visualKeys.filter((key) => !key.black), [visualKeys]);
-  const blackKeys = useMemo(() => visualKeys.filter((key) => key.black), [visualKeys]);
-  const mobileVisualKeys = useMemo(
-    () => visualKeys.filter((key) => key.semitone <= MOBILE_LAST_SEMITONE),
-    [visualKeys],
-  );
-  const mobileWhiteKeyCount = useMemo(
-    () => mobileVisualKeys.filter((key) => !key.black).length,
-    [mobileVisualKeys],
-  );
 
   const removePointerMidi = useCallback(
     (midi: number | null) => {
@@ -236,7 +207,7 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
       onPointerUp={handlePointerRelease}
     >
       <div className={styles.whiteKeys}>
-        {whiteKeys.map((key) => {
+        {WHITE_KEYS.map((key) => {
           const midi = midiFor(key, octave);
           const pressed = activeNotes.has(midi);
 
@@ -244,48 +215,36 @@ export function SynthKeyboard({ octave, activeNotes, disabled, onNoteOn, onNoteO
             <button
               aria-label={noteLabel(key, octave)}
               className={`${styles.whiteKey} ${pressed ? styles.keyDown : ""}`}
-              data-mobile-hidden={key.semitone > MOBILE_LAST_SEMITONE ? "true" : undefined}
               data-synth-midi={midi}
               disabled={disabled}
               key={`${key.name}-${key.semitone}`}
               type="button"
               onPointerDown={(event) => handlePointerDown(event, midi)}
-            >
-              <span>{key.key ? key.key.toUpperCase() : ""}</span>
-            </button>
+            />
           );
         })}
       </div>
 
-      {blackKeys.map((key) => {
+      {BLACK_KEYS.map((key) => {
         const midi = midiFor(key, octave);
         const pressed = activeNotes.has(midi);
-        const desktopPlacement = getBlackKeyPlacement(key, visualKeys, whiteKeys.length);
-        const mobilePlacement =
-          key.semitone <= MOBILE_LAST_SEMITONE
-            ? getBlackKeyPlacement(key, mobileVisualKeys, mobileWhiteKeyCount)
-            : desktopPlacement;
+        const placement = getBlackKeyPlacement(key, SYNTH_KEYS, WHITE_KEYS.length);
         const keyStyle = {
-          "--black-key-left": `${desktopPlacement.leftPercent}%`,
-          "--black-key-width": `${desktopPlacement.widthPercent}%`,
-          "--mobile-black-key-left": `${mobilePlacement.leftPercent}%`,
-          "--mobile-black-key-width": `${mobilePlacement.widthPercent}%`,
+          "--black-key-left": `${placement.leftPercent}%`,
+          "--black-key-width": `${placement.widthPercent}%`,
         } as CSSProperties;
 
         return (
           <button
             aria-label={noteLabel(key, octave)}
             className={`${styles.blackKey} ${pressed ? styles.keyDown : ""}`}
-            data-mobile-hidden={key.semitone > MOBILE_LAST_SEMITONE ? "true" : undefined}
             data-synth-midi={midi}
             disabled={disabled}
             key={`${key.name}-${key.semitone}`}
             style={keyStyle}
             type="button"
             onPointerDown={(event) => handlePointerDown(event, midi)}
-          >
-            <span>{key.key ? key.key.toUpperCase() : ""}</span>
-          </button>
+          />
         );
       })}
     </div>
