@@ -13,15 +13,28 @@ export type AreaPoint = {
   y: number;
 };
 
-export type InputAreaPolygon = "hit" | "highlight";
-export type InputAreaHelperMode = InputAreaPolygon | "controls";
-export type ControlLayoutId = "logo" | "wetDry" | "inputLevel" | TapId;
+export type TapButtonVisualState = "off" | "on";
+export type TapButtonSide = "left" | "right";
 
-export type InputAreaDragState = {
-  index: number;
-  pointerId: number;
-  polygon: InputAreaPolygon;
+export type TapButtonCapGeometry = {
+  x: number;
+  y: number;
+  size: number;
 };
+
+export type TapButtonCapGeometryBySide = Record<
+  TapButtonSide,
+  Record<TapButtonVisualState, TapButtonCapGeometry>
+>;
+
+export type ControlLayoutId =
+  | "logo"
+  | "outputJack"
+  | "inputJack"
+  | "inputSource"
+  | "wetDry"
+  | "inputLevel"
+  | TapId;
 
 export type ControlDragState = {
   id: ControlLayoutId;
@@ -58,7 +71,7 @@ export const FRAME_SIZE_MS: FrameSizeMs = 20;
 export const BUFFER_MODE: BufferMode = "buffered";
 export const JITTER_BUFFER_MS = 50;
 export const DEFAULT_INPUT_DEVICE_ID = "";
-export const SYNTH_LEVEL = 0.7;
+export const SYNTH_LEVEL = 0.8;
 export const SYNTH_DEFAULT_OCTAVE = 4;
 export const SYNTH_MIN_OCTAVE = 1;
 export const SYNTH_MAX_OCTAVE = 6;
@@ -76,36 +89,41 @@ export const INPUT_LEVEL_SPIN_DEAD_ZONE_RATIO = 0.22;
 export const INPUT_LEVEL_SPRITE_FRAME_COUNT = 120;
 export const INPUT_LEVEL_SPRITE_DEGREES_PER_FRAME = 360 / INPUT_LEVEL_SPRITE_FRAME_COUNT;
 
-export const INPUT_HIT_POLYGON: AreaPoint[] = [
-  { x: 65.8, y: 6.9 },
-  { x: 81.2, y: 6.9 },
-  { x: 82.5, y: 15.1 },
-  { x: 79.5, y: 22.3 },
-  { x: 67.9, y: 22.5 },
-  { x: 64.8, y: 15.1 },
+export const CONTROL_LAYOUT_IDS: ControlLayoutId[] = [
+  "logo",
+  "outputJack",
+  "inputJack",
+  "inputSource",
+  "wetDry",
+  "inputLevel",
+  "rich",
+  "sf",
+  "fra",
+  "blr",
 ];
-
-export const INPUT_HIGHLIGHT_POLYGON: AreaPoint[] = [
-  { x: 76.6, y: 8.7 },
-  { x: 76.7, y: 9.7 },
-  { x: 78.9, y: 9.8 },
-  { x: 79.1, y: 11.4 },
-  { x: 68.3, y: 12.1 },
-  { x: 68.6, y: 10.3 },
-  { x: 70.0, y: 10.5 },
-  { x: 70.1, y: 9.1 },
-];
-
-export const CONTROL_LAYOUT_IDS: ControlLayoutId[] = ["logo", "wetDry", "inputLevel", "rich", "sf", "fra", "blr"];
 
 export const CONTROL_LAYOUT: Record<ControlLayoutId, AreaPoint> = {
   logo: { x: 49, y: 41.5 },
+  outputJack: { x: 21, y: 3.5 },
+  inputJack: { x: 79.7, y: 3.5 },
+  inputSource: { x: 79.1, y: 17 },
   wetDry: { x: 22.1, y: 35.4 },
   inputLevel: { x: 77.4, y: 35.7 },
   rich: { x: 20, y: 74.1 },
   sf: { x: 39.9, y: 74.4 },
   fra: { x: 60, y: 74.3 },
   blr: { x: 80, y: 74.2 },
+};
+
+export const TAP_BUTTON_CAP_GEOMETRY: TapButtonCapGeometryBySide = {
+  right: {
+    off: { x: 57, y: 50.5, size: 100 },
+    on: { x: 54, y: 49, size: 86 },
+  },
+  left: {
+    off: { x: 44.5, y: 50, size: 100 },
+    on: { x: 47.5, y: 49.5, size: 86 },
+  },
 };
 
 export const INITIAL_TAP_ENABLED = TAPS.reduce(
@@ -148,6 +166,9 @@ export const knobValueToFrame = (value: number) =>
   Math.floor(normalizeAngle(knobValueToAngle(value)) / INPUT_LEVEL_SPRITE_DEGREES_PER_FRAME) %
   INPUT_LEVEL_SPRITE_FRAME_COUNT;
 
+export const knobValueToCssRotation = (value: number) =>
+  90 - knobValueToAngle(value);
+
 export const roundPointValue = (value: number) => Math.round(value * 10) / 10;
 
 export const clampAreaValue = (value: number) => Math.min(100, Math.max(0, roundPointValue(value)));
@@ -155,15 +176,15 @@ export const clampAreaValue = (value: number) => Math.min(100, Math.max(0, round
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-export const formatAreaConstant = (name: string, points: AreaPoint[]) =>
-  `const ${name}: AreaPoint[] = [\n${points
-    .map((point) => `  { x: ${point.x}, y: ${point.y} },`)
-    .join("\n")}\n];`;
-
 export const formatControlLayoutConstant = (layout: Record<ControlLayoutId, AreaPoint>) =>
   `const CONTROL_LAYOUT: Record<ControlLayoutId, AreaPoint> = {\n${CONTROL_LAYOUT_IDS.map(
     (id) => `  ${id}: { x: ${layout[id].x}, y: ${layout[id].y} },`,
   ).join("\n")}\n};`;
+
+export const formatTapButtonCapGeometryConstant = (
+  geometry: TapButtonCapGeometryBySide,
+) =>
+  `const TAP_BUTTON_CAP_GEOMETRY: TapButtonCapGeometryBySide = {\n  right: {\n    off: { x: ${geometry.right.off.x}, y: ${geometry.right.off.y}, size: ${geometry.right.off.size} },\n    on: { x: ${geometry.right.on.x}, y: ${geometry.right.on.y}, size: ${geometry.right.on.size} },\n  },\n  left: {\n    off: { x: ${geometry.left.off.x}, y: ${geometry.left.off.y}, size: ${geometry.left.off.size} },\n    on: { x: ${geometry.left.on.x}, y: ${geometry.left.on.y}, size: ${geometry.left.on.size} },\n  },\n};`;
 
 export const parseStoredHelperPanelPosition = (value: string | null) => {
   if (!value) return null;

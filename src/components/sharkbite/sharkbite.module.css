@@ -24,15 +24,21 @@
 
 .pedalCanvas {
   aspect-ratio: 7 / 5;
+  container-type: inline-size;
+  max-width: var(--pedal-max-width);
+  position: relative;
+  width: min(100%, var(--pedal-max-width), calc((100svh - var(--stage-padding) * 2) * 1.24));
+}
+
+.pedalCanvas::before {
   background-image: url("/assets/sharkbite/pedal-bg-no-logo.png");
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  container-type: inline-size;
+  content: "";
   filter: drop-shadow(0 18px 28px rgba(36, 36, 36, 0.14));
-  max-width: var(--pedal-max-width);
-  position: relative;
-  width: min(100%, var(--pedal-max-width), calc((100svh - var(--stage-padding) * 2) * 1.4));
+  inset: 0;
+  position: absolute;
 }
 
 .infoToggle,
@@ -261,6 +267,44 @@
   position: absolute;
 }
 
+.topJack {
+  display: block;
+  height: auto;
+  left: var(--control-x);
+  pointer-events: none;
+  position: absolute;
+  top: var(--control-y);
+  transform: translateX(-50%) rotate(-2deg);
+  transform-origin: center;
+  width: 15.5%;
+  z-index: 1;
+}
+
+.inputSourceJack {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  line-height: 0;
+  padding: 0;
+  pointer-events: auto;
+}
+
+.inputSourceJack:focus-visible {
+  outline: none;
+}
+
+.topJackGraphic {
+  display: block;
+  height: auto;
+  width: 100%;
+}
+
+.inputSourceJack:hover .topJackGraphic,
+.inputSourceJack:focus-visible .topJackGraphic {
+  opacity: 0.68;
+}
+
 /* Accessibility utility */
 .srOnly {
   clip: rect(0, 0, 0, 0);
@@ -288,89 +332,78 @@
 }
 
 .inputJackLabel {
-  left: 74%;
-  top: 17%;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  left: var(--control-x);
+  padding: 0;
+  pointer-events: auto;
+  top: var(--control-y);
   transform: translate(-50%, -50%) rotate(-1deg);
 }
 
-/* Input jack polygon hit area and hover highlight */
-.inputAreaSvg {
-  height: 100%;
+.inputJackLabel:hover,
+.inputJackLabel:focus-visible {
+  opacity: 0.68;
+  outline: none;
+}
+
+.layoutGrid {
+  background-image:
+    linear-gradient(rgba(15, 15, 15, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 15, 15, 0.2) 1px, transparent 1px);
+  background-size: 5% 5%;
+  display: none;
   inset: 0;
-  overflow: visible;
   pointer-events: none;
   position: absolute;
-  width: 100%;
+  z-index: 6;
 }
 
-.inputHighlightPolygon {
-  fill: rgba(36, 36, 36, 0.34);
-  mix-blend-mode: multiply;
-  opacity: 0;
-  pointer-events: none;
+.layoutGrid[data-visible="true"] {
+  display: block;
 }
 
-.inputHitPolygon {
-  cursor: pointer;
-  fill: transparent;
-  outline: none;
-  pointer-events: auto;
-  stroke: transparent;
-}
-
-.inputAreaEditorLayer {
-  pointer-events: none;
-}
-
-.inputAreaEditorPolygon {
-  fill: rgba(36, 36, 36, 0.1);
-  pointer-events: none;
-  stroke: rgba(36, 36, 36, 0.88);
-  stroke-dasharray: 0.8 0.7;
-  stroke-width: 0.24;
-  vector-effect: non-scaling-stroke;
-}
-
-.inputAreaEditorPointTarget {
-  cursor: grab;
-  fill: rgba(255, 255, 255, 0.001);
-  pointer-events: all;
-  stroke: transparent;
-}
-
-.inputAreaEditorPoint {
-  fill: var(--panel);
-  pointer-events: none;
-  stroke: var(--line);
-  stroke-width: 0.16;
-  vector-effect: non-scaling-stroke;
-}
-
-.pedalOverlay[data-input-active="true"] .inputHighlightPolygon {
-  opacity: 1;
-}
-
-/* Right-side input level knob */
+/* Rotary knob: static background + rotating indicator */
 .knob {
   aspect-ratio: 1;
-  background-image: url("/assets/sharkbite/input-level-knob-pointy-metal.png");
+  background-image: url("/assets/sharkbite/turn-knob-bg1.png");
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 12000% 100%;
+  background-size: contain;
   border: 0;
   display: block;
   filter: drop-shadow(0 8px 8px rgba(15, 15, 15, 0.18));
   inset: 0;
   position: absolute;
-  /* 120-frame GarageBand pointy metal sprite, driven by --input-level-frame. */
-  background-position-x: calc(var(--input-level-frame, 0) * 100% / 119);
   transition: filter 120ms ease;
+}
+
+.knob::after {
+  background-image: url("/assets/sharkbite/turn-knob1.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  content: "";
+  display: block;
+  height: 100%;
+  transform: rotate(var(--knob-rotation, 0deg));
+  width: 100%;
+}
+
+.inputLevelKnob {
+  background-image: url("/assets/sharkbite/turn-knob-bg2.png");
+}
+
+.inputLevelKnob::after {
+  background-image: url("/assets/sharkbite/turn-knob2.png");
 }
 
 .knobControl {
   aspect-ratio: 1;
   border: 0;
-  cursor: pointer;
+  cursor: grab;
   left: var(--control-x);
   outline: none;
   pointer-events: auto;
@@ -404,6 +437,7 @@
 
 .pedalLogoImage {
   display: block;
+  filter: brightness(0);
   height: auto;
   width: 100%;
 }
@@ -482,6 +516,8 @@
 
 .knobControl[data-helper-draggable="true"],
 .pedalLogoControl[data-helper-draggable="true"],
+.inputJackLabel[data-helper-draggable="true"],
+.topJack[data-helper-draggable="true"],
 .tapButton[data-helper-draggable="true"] {
   cursor: grab;
   outline: 1px dashed rgba(36, 36, 36, 0.82);
@@ -492,6 +528,8 @@
 
 .knobControl[data-helper-dragging="true"],
 .pedalLogoControl[data-helper-dragging="true"],
+.inputJackLabel[data-helper-dragging="true"],
+.topJack[data-helper-dragging="true"],
 .tapButton[data-helper-dragging="true"] {
   cursor: grabbing;
   outline-style: solid;
@@ -527,20 +565,59 @@
 
 .tapButtonCap {
   aspect-ratio: 1;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
   display: block;
   filter: drop-shadow(0 5px 5px rgba(15, 15, 15, 0.2));
+  position: relative;
   width: 100%;
 }
 
-.tapButtonLeft .tapButtonCap {
-  background-image: url("/assets/sharkbite/left_button.png");
+.tapButtonCap::before,
+.tapButtonCap::after {
+  aspect-ratio: 1;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, -50%);
 }
 
-.tapButtonRight .tapButtonCap {
-  background-image: url("/assets/sharkbite/right_button.png");
+.tapButtonCap::before {
+  background-image: url("/assets/sharkbite/left_button.png");
+  left: var(--tap-cap-off-x);
+  top: var(--tap-cap-off-y);
+  width: var(--tap-cap-off-size);
+}
+
+.tapButtonCap::after {
+  background-image: url("/assets/sharkbite/button-pressed.png");
+  left: var(--tap-cap-on-x);
+  top: var(--tap-cap-on-y);
+  width: var(--tap-cap-on-size);
+}
+
+.tapButton[data-enabled="false"] .tapButtonCap::before {
+  opacity: 1;
+}
+
+.tapButton[data-enabled="true"] .tapButtonCap::after {
+  opacity: 1;
+}
+
+.tapButton[data-state-preview="true"] .tapButtonCap {
+  filter: none;
+}
+
+.tapButton[data-state-preview="true"] .tapButtonCap::before,
+.tapButton[data-state-preview="true"] .tapButtonCap::after {
+  opacity: 0.52;
+}
+
+.tapButtonLeft .tapButtonCap::before,
+.tapButtonLeft .tapButtonCap::after {
+  transform: translate(-50%, -50%) scaleX(-1);
 }
 
 .tapButtonLabel {
@@ -714,7 +791,7 @@
   width: 22px;
 }
 
-/* Input polygon helper menu */
+/* Pedal layout helper menu */
 .inputAreaHelperPanel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -724,7 +801,9 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: calc(100vh - 20px);
   max-width: calc(100vw - 32px);
+  overflow-y: auto;
   padding: 12px;
   position: fixed;
   right: 16px;
@@ -758,13 +837,76 @@
   margin: 0;
 }
 
-.inputAreaHelperTabs,
+.tapCapGeometryGroup {
+  display: grid;
+  gap: 5px;
+}
+
+.tapCapGeometryGroup > b {
+  font-size: 11px;
+}
+
+.tapCapGeometryControls {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tapCapGeometryControls fieldset {
+  border: 1px solid var(--line);
+  margin: 0;
+  padding: 7px;
+}
+
+.tapCapGeometryControls legend,
+.tapCapGeometryControls label,
+.tapCapGeometryValue {
+  font-size: 10px;
+}
+
+.tapCapGeometryControls label {
+  align-items: center;
+  display: grid;
+  gap: 5px;
+  grid-template-columns: 25px minmax(0, 1fr) 38px;
+  margin-top: 5px;
+}
+
+.tapCapGeometryControls input {
+  margin: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.tapCapGeometryValue {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--foreground);
+  padding: 2px;
+  text-align: right;
+}
+
+.tapStatePreviewToggle {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--foreground);
+  font-size: 11px;
+  min-height: 30px;
+  padding: 6px 8px;
+}
+
+.tapStatePreviewToggle:hover,
+.tapStatePreviewToggle:focus-visible,
+.tapStatePreviewToggle[aria-pressed="true"] {
+  background: var(--line);
+  color: var(--panel);
+}
+
 .inputAreaHelperActions {
   display: flex;
   gap: 6px;
 }
 
-.inputAreaHelperTabs button,
 .inputAreaHelperActions button {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -775,11 +917,9 @@
   padding: 6px 8px;
 }
 
-.inputAreaHelperTabs button:hover,
 .inputAreaHelperActions button:hover,
-.inputAreaHelperTabs button:focus-visible,
 .inputAreaHelperActions button:focus-visible,
-.inputAreaHelperTabActive {
+.inputAreaHelperActions button[aria-pressed="true"] {
   background: var(--line);
   color: var(--panel);
 }
@@ -885,7 +1025,7 @@
   }
 
   .shell[data-piano-open="true"] .pedalCanvas {
-    width: min(100%, var(--pedal-max-width), calc((100svh - var(--stage-padding) * 2) * 1.4));
+    width: min(100%, var(--pedal-max-width), calc((100svh - var(--stage-padding) * 2) * 1.24));
   }
 
   .shell[data-piano-open="true"] .pianoPanel {

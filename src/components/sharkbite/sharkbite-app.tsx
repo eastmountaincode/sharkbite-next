@@ -24,7 +24,7 @@ import {
     INITIAL_TAP_ENABLED,
     INITIAL_TAP_METRICS,
     JITTER_BUFFER_MS,
-    knobValueToFrame,
+    knobValueToCssRotation,
     MASTER_WET_LEVEL,
     MAX_INPUT_LEVEL,
     SYNTH_LEVEL,
@@ -46,7 +46,6 @@ export function SharkbiteApp() {
     const dialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const infoDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const [status, setStatus] = useState(INITIAL_STATUS);
-    const [inputJackActive, setInputJackActive] = useState(false);
     const [inputLevel, setInputLevelState] = useState(0);
     const [wetDry, setWetDryState] = useState(50);
     const [enabledTaps, setEnabledTaps] = useState(INITIAL_TAP_ENABLED);
@@ -103,37 +102,29 @@ export function SharkbiteApp() {
     });
 
     const {
-        activeInputAreaHelperPolygon,
-        activeInputAreaPolygon,
         controlDragState,
         controlLayout,
         controlMoveModeActive,
         copyControlLayout,
-        copyInputAreaPolygons,
         handleControlDragPointerMove,
         handleHelperPanelDragPointerMove,
-        handleInputAreaEditorDoubleClick,
-        handleInputAreaEditorPointerMove,
         helperClipboardText,
         helperPanelDragging,
         helperPanelRef,
         helperPanelStyle,
-        inputAreaHelperMode,
         inputAreaHelperVisible,
-        inputAreaSvgRef,
-        inputHighlightPolygon,
-        inputHitPolygon,
-        polygonHelperActive,
-        removeLastInputAreaPoint,
-        resetControlLayout,
-        resetInputAreaPolygon,
-        setInputAreaHelperMode,
+        layoutGridVisible,
+        pedalOverlayRef,
+        resetPedalLayout,
         startControlDrag,
         startHelperPanelDrag,
-        startInputAreaPointDrag,
         stopControlDrag,
         stopHelperPanelDrag,
-        stopInputAreaEditorDrag,
+        tapButtonCapGeometry,
+        tapButtonStatePreviewVisible,
+        toggleLayoutGrid,
+        toggleTapButtonStatePreview,
+        updateTapButtonCapGeometry,
     } = usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible });
 
     useEffect(() => {
@@ -246,7 +237,7 @@ export function SharkbiteApp() {
     };
 
     const inputKnobStyle = {
-        "--input-level-frame": knobValueToFrame(inputLevel),
+        "--knob-rotation": `${knobValueToCssRotation(inputLevel)}deg`,
         "--control-x": `${controlLayout.inputLevel.x}%`,
         "--control-y": `${controlLayout.inputLevel.y}%`,
     } as CSSProperties;
@@ -255,7 +246,7 @@ export function SharkbiteApp() {
         "--input-meter-level": inputMonitorLevel,
     } as CSSProperties;
     const wetDryKnobStyle = {
-        "--input-level-frame": knobValueToFrame(wetDry),
+        "--knob-rotation": `${knobValueToCssRotation(wetDry)}deg`,
         "--control-x": `${controlLayout.wetDry.x}%`,
         "--control-y": `${controlLayout.wetDry.y}%`,
     } as CSSProperties;
@@ -275,35 +266,26 @@ export function SharkbiteApp() {
                 onTogglePiano={togglePiano}
             />
             <PedalSurface
-                activeInputAreaHelperPolygon={activeInputAreaHelperPolygon}
-                activeInputAreaPolygon={activeInputAreaPolygon}
                 controlDragState={controlDragState}
                 controlLayout={controlLayout}
                 controlMoveModeActive={controlMoveModeActive}
                 enabledTaps={enabledTaps}
-                inputAreaHelperVisible={inputAreaHelperVisible}
-                inputAreaSvgRef={inputAreaSvgRef}
                 inputDialogOpen={inputDialogOpen}
-                inputHitPolygon={inputHitPolygon}
-                inputHighlightPolygon={inputHighlightPolygon}
-                inputJackActive={inputJackActive}
                 inputKnobStyle={inputKnobStyle}
                 inputLevel={inputLevel}
                 inputLevelDragging={inputLevelControl.dragging}
                 inputMeterStyle={inputMeterStyle}
+                layoutGridVisible={layoutGridVisible}
                 logoStyle={logoStyle}
                 maxInputLevel={MAX_INPUT_LEVEL}
-                polygonHelperActive={polygonHelperActive}
+                pedalOverlayRef={pedalOverlayRef}
                 statusRunning={status.running}
+                tapButtonCapGeometry={tapButtonCapGeometry}
+                tapButtonStatePreviewVisible={tapButtonStatePreviewVisible}
                 tapMetrics={tapMetrics}
                 wetDry={wetDry}
                 wetDryDragging={wetDryControl.dragging}
                 wetDryKnobStyle={wetDryKnobStyle}
-                onInputAreaEditorDoubleClick={handleInputAreaEditorDoubleClick}
-                onInputAreaEditorPointerMove={handleInputAreaEditorPointerMove}
-                onInputAreaEditorDragStop={stopInputAreaEditorDrag}
-                onInputAreaPointDragStart={startInputAreaPointDrag}
-                onInputJackActiveChange={setInputJackActive}
                 onInputLevelKeyDown={inputLevelControl.handleKeyDown}
                 onInputLevelLostPointerCapture={inputLevelControl.handleLostPointerCapture}
                 onInputLevelPointerCancel={inputLevelControl.stopDrag}
@@ -338,22 +320,22 @@ export function SharkbiteApp() {
 
             {ENABLE_INPUT_AREA_HELPER ? (
                 <InputAreaHelperPanel
-                    activeInputAreaHelperPolygon={activeInputAreaHelperPolygon}
                     clipboardText={helperClipboardText}
                     helperPanelDragging={helperPanelDragging}
                     helperPanelRef={helperPanelRef}
                     helperPanelStyle={helperPanelStyle}
-                    inputAreaHelperMode={inputAreaHelperMode}
                     inputAreaHelperVisible={inputAreaHelperVisible}
+                    layoutGridVisible={layoutGridVisible}
+                    tapButtonCapGeometry={tapButtonCapGeometry}
+                    tapButtonStatePreviewVisible={tapButtonStatePreviewVisible}
                     onCopyControlLayout={copyControlLayout}
-                    onCopyInputAreaPolygons={copyInputAreaPolygons}
-                    onModeChange={setInputAreaHelperMode}
                     onMoveHelperPanelDrag={handleHelperPanelDragPointerMove}
-                    onRemoveLastInputAreaPoint={removeLastInputAreaPoint}
-                    onResetControlLayout={resetControlLayout}
-                    onResetInputAreaPolygon={resetInputAreaPolygon}
+                    onResetPedalLayout={resetPedalLayout}
                     onStartHelperPanelDrag={startHelperPanelDrag}
                     onStopHelperPanelDrag={stopHelperPanelDrag}
+                    onTapButtonCapGeometryChange={updateTapButtonCapGeometry}
+                    onToggleLayoutGrid={toggleLayoutGrid}
+                    onToggleTapButtonStatePreview={toggleTapButtonStatePreview}
                 />
             ) : null}
 

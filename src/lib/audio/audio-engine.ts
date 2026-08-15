@@ -8,6 +8,8 @@ type BrowserWindow = Window & typeof globalThis & { webkitAudioContext?: typeof 
 const RTT_METRICS_MS = 250;
 const SYNTH_VOICE_SUSTAIN_RATIO = 0.7;
 const SYNTH_VOICE_REBALANCE_SECONDS = 0.035;
+const SYNTH_BUS_GAIN = 1;
+const DRY_WET_HALF_PI = Math.PI / 2;
 
 type TapRuntime = TapConfig & {
   enabled: boolean;
@@ -149,7 +151,7 @@ export class AudioEngine {
     this.captureNode = new AudioWorkletNode(this.ctx, "sharkbite-capture");
 
     this.sourceBus.gain.value = 1;
-    this.synthGain.gain.value = this.synthLevel;
+    this.synthGain.gain.value = SYNTH_BUS_GAIN;
     this.masterLimiter.threshold.value = -6;
     this.masterLimiter.knee.value = 18;
     this.masterLimiter.ratio.value = 12;
@@ -238,8 +240,12 @@ export class AudioEngine {
   }
 
   setWetDry(wetDry: number, masterWet: number) {
-    if (this.dryGain) this.dryGain.gain.value = 1 - wetDry;
-    if (this.wetGain) this.wetGain.gain.value = wetDry * masterWet;
+    const amount = Math.min(1, Math.max(0, wetDry));
+    const dryLevel = Math.cos(amount * DRY_WET_HALF_PI);
+    const wetLevel = Math.sin(amount * DRY_WET_HALF_PI) * masterWet;
+
+    if (this.dryGain) this.dryGain.gain.value = dryLevel;
+    if (this.wetGain) this.wetGain.gain.value = wetLevel;
   }
 
   setInputLevel(level: number) {
@@ -267,7 +273,7 @@ export class AudioEngine {
   setSynth(wave: OscillatorType, level: number) {
     this.synthWave = wave;
     this.synthLevel = level;
-    if (this.synthGain) this.synthGain.gain.value = level;
+    if (this.synthGain) this.synthGain.gain.value = SYNTH_BUS_GAIN;
     this.rebalanceSynthVoices();
   }
 

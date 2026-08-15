@@ -1,6 +1,5 @@
 import {
     type CSSProperties,
-    type MouseEvent as ReactMouseEvent,
     type PointerEvent as ReactPointerEvent,
     useEffect,
     useRef,
@@ -12,19 +11,18 @@ import {
     type ControlLayoutId,
     type HelperPanelDragState,
     type HelperPanelPosition,
-    type InputAreaDragState,
-    type InputAreaHelperMode,
-    type InputAreaPolygon,
+    type TapButtonCapGeometry,
+    type TapButtonSide,
+    type TapButtonVisualState,
     clampAreaValue,
     clampHelperPanelPosition,
     CONTROL_LAYOUT,
     ENABLE_INPUT_AREA_HELPER,
-    formatAreaConstant,
     formatControlLayoutConstant,
+    formatTapButtonCapGeometryConstant,
     HELPER_PANEL_POSITION_STORAGE_KEY,
-    INPUT_HIGHLIGHT_POLYGON,
-    INPUT_HIT_POLYGON,
     parseStoredHelperPanelPosition,
+    TAP_BUTTON_CAP_GEOMETRY,
 } from "./sharkbite-model";
 
 type UsePedalEditorArgs = {
@@ -35,16 +33,15 @@ type UsePedalEditorArgs = {
 
 export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }: UsePedalEditorArgs) {
     const helperPanelRef = useRef<HTMLElement | null>(null);
-    const inputAreaSvgRef = useRef<SVGSVGElement | null>(null);
+    const pedalOverlayRef = useRef<HTMLDivElement | null>(null);
     const controlDragRef = useRef<ControlDragState | null>(null);
     const helperPanelDragRef = useRef<HelperPanelDragState | null>(null);
-    const [inputHitPolygon, setInputHitPolygon] = useState(INPUT_HIT_POLYGON);
-    const [inputHighlightPolygon, setInputHighlightPolygon] = useState(INPUT_HIGHLIGHT_POLYGON);
     const [controlLayout, setControlLayout] = useState(CONTROL_LAYOUT);
-    const [inputAreaDragState, setInputAreaDragState] = useState<InputAreaDragState | null>(null);
+    const [tapButtonCapGeometry, setTapButtonCapGeometry] = useState(TAP_BUTTON_CAP_GEOMETRY);
+    const [tapButtonStatePreviewVisible, setTapButtonStatePreviewVisible] = useState(false);
     const [controlDragState, setControlDragState] = useState<ControlDragState | null>(null);
     const [inputAreaHelperVisible, setInputAreaHelperVisible] = useState(false);
-    const [inputAreaHelperMode, setInputAreaHelperMode] = useState<InputAreaHelperMode>("highlight");
+    const [layoutGridVisible, setLayoutGridVisible] = useState(false);
     const [helperPanelPosition, setHelperPanelPosition] = useState<HelperPanelPosition | null>(null);
     const [helperPanelDragging, setHelperPanelDragging] = useState(false);
     const [storedHelperStateReady, setStoredHelperStateReady] = useState(false);
@@ -127,27 +124,14 @@ export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }
     }, [infoDialogOpen, inputDialogOpen, pianoVisible]);
 
     const getPedalPoint = (clientX: number, clientY: number) => {
-        const svg = inputAreaSvgRef.current;
-        if (!svg) return null;
+        const pedalOverlay = pedalOverlayRef.current;
+        if (!pedalOverlay) return null;
 
-        const rect = svg.getBoundingClientRect();
+        const rect = pedalOverlay.getBoundingClientRect();
         return {
             x: clampAreaValue(((clientX - rect.left) / rect.width) * 100),
             y: clampAreaValue(((clientY - rect.top) / rect.height) * 100),
         };
-    };
-
-    const getInputAreaPoint = (event: ReactPointerEvent<SVGSVGElement>) => getPedalPoint(event.clientX, event.clientY);
-
-    const updateInputAreaPoint = (polygon: InputAreaPolygon, index: number, nextPoint: AreaPoint) => {
-        const update = (points: AreaPoint[]) => points.map((point, pointIndex) => (pointIndex === index ? nextPoint : point));
-        if (polygon === "hit") setInputHitPolygon(update);
-        else setInputHighlightPolygon(update);
-    };
-
-    const setInputAreaPolygon = (polygon: InputAreaPolygon, points: AreaPoint[]) => {
-        if (polygon === "hit") setInputHitPolygon(points);
-        else setInputHighlightPolygon(points);
     };
 
     const setControlPosition = (id: ControlLayoutId, nextPoint: AreaPoint) => {
@@ -157,73 +141,34 @@ export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }
         }));
     };
 
-    const handleInputAreaEditorPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
-        if (!inputAreaDragState || inputAreaDragState.pointerId !== event.pointerId) return;
-
-        const nextPoint = getInputAreaPoint(event);
-        if (!nextPoint) return;
-
-        event.preventDefault();
-        updateInputAreaPoint(inputAreaDragState.polygon, inputAreaDragState.index, nextPoint);
-    };
-
-    const stopInputAreaEditorDrag = (event: ReactPointerEvent<SVGSVGElement>) => {
-        if (inputAreaDragState?.pointerId !== event.pointerId) return;
-        setInputAreaDragState(null);
-    };
-
-    const startInputAreaPointDrag = (
-        polygon: InputAreaPolygon,
-        index: number,
-        event: ReactPointerEvent<SVGCircleElement>,
-    ) => {
-        event.preventDefault();
-        event.currentTarget.setPointerCapture(event.pointerId);
-        setInputAreaDragState({
-            index,
-            pointerId: event.pointerId,
-            polygon,
-        });
-    };
-
-    const handleInputAreaEditorDoubleClick = (event: ReactMouseEvent<SVGSVGElement>) => {
-        if (
-            !ENABLE_INPUT_AREA_HELPER ||
-            !inputAreaHelperVisible ||
-            inputAreaHelperMode === "controls" ||
-            event.target instanceof SVGCircleElement
-        ) {
-            return;
-        }
-
-        const rect = event.currentTarget.getBoundingClientRect();
-        const nextPoint = {
-            x: clampAreaValue(((event.clientX - rect.left) / rect.width) * 100),
-            y: clampAreaValue(((event.clientY - rect.top) / rect.height) * 100),
-        };
-        const points = inputAreaHelperMode === "hit" ? inputHitPolygon : inputHighlightPolygon;
-        setInputAreaPolygon(inputAreaHelperMode, [...points, nextPoint]);
-    };
-
-    const resetInputAreaPolygon = (polygon: InputAreaPolygon) => {
-        setInputAreaPolygon(polygon, polygon === "hit" ? INPUT_HIT_POLYGON : INPUT_HIGHLIGHT_POLYGON);
-    };
-
-    const copyInputAreaPolygons = () => {
+    const copyControlLayout = () => {
         const text = [
-            formatAreaConstant("INPUT_HIT_POLYGON", inputHitPolygon),
-            formatAreaConstant("INPUT_HIGHLIGHT_POLYGON", inputHighlightPolygon),
+            formatControlLayoutConstant(controlLayout),
+            formatTapButtonCapGeometryConstant(tapButtonCapGeometry),
         ].join("\n\n");
-
         void navigator.clipboard?.writeText(text);
     };
 
-    const copyControlLayout = () => {
-        void navigator.clipboard?.writeText(formatControlLayoutConstant(controlLayout));
+    const updateTapButtonCapGeometry = (
+        side: TapButtonSide,
+        state: TapButtonVisualState,
+        property: keyof TapButtonCapGeometry,
+        value: number,
+    ) => {
+        setTapButtonCapGeometry((current) => ({
+            ...current,
+            [side]: {
+                ...current[side],
+                [state]: {
+                    ...current[side][state],
+                    [property]: value,
+                },
+            },
+        }));
     };
 
     const startControlDrag = (id: ControlLayoutId, event: ReactPointerEvent<HTMLElement>) => {
-        if (!ENABLE_INPUT_AREA_HELPER || !inputAreaHelperVisible || inputAreaHelperMode !== "controls") return;
+        if (!ENABLE_INPUT_AREA_HELPER || !inputAreaHelperVisible) return;
         if (event.button !== 0) return;
 
         const pointerPoint = getPedalPoint(event.clientX, event.clientY);
@@ -342,52 +287,38 @@ export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }
             top: `${helperPanelPosition.y}px`,
         } as CSSProperties)
         : undefined;
-    const controlMoveModeActive = ENABLE_INPUT_AREA_HELPER && inputAreaHelperVisible && inputAreaHelperMode === "controls";
-    const polygonHelperActive = ENABLE_INPUT_AREA_HELPER && inputAreaHelperVisible && inputAreaHelperMode !== "controls";
-    const activeInputAreaHelperPolygon: InputAreaPolygon = inputAreaHelperMode === "hit" ? "hit" : "highlight";
-    const activeInputAreaPolygon = activeInputAreaHelperPolygon === "hit" ? inputHitPolygon : inputHighlightPolygon;
-    const inputAreaClipboardText = [
-        formatAreaConstant("INPUT_HIT_POLYGON", inputHitPolygon),
-        formatAreaConstant("INPUT_HIGHLIGHT_POLYGON", inputHighlightPolygon),
+    const controlMoveModeActive = ENABLE_INPUT_AREA_HELPER && inputAreaHelperVisible;
+    const helperClipboardText = [
+        formatControlLayoutConstant(controlLayout),
+        formatTapButtonCapGeometryConstant(tapButtonCapGeometry),
     ].join("\n\n");
-    const controlLayoutClipboardText = formatControlLayoutConstant(controlLayout);
-    const helperClipboardText = inputAreaHelperMode === "controls" ? controlLayoutClipboardText : inputAreaClipboardText;
-    const removeLastInputAreaPoint = () => {
-        const nextPoints = activeInputAreaPolygon.slice(0, -1);
-        if (nextPoints.length >= 3) setInputAreaPolygon(activeInputAreaHelperPolygon, nextPoints);
-    };
 
     return {
-        activeInputAreaHelperPolygon,
-        activeInputAreaPolygon,
         controlDragState,
         controlLayout,
         controlMoveModeActive,
         copyControlLayout,
-        copyInputAreaPolygons,
         handleControlDragPointerMove,
         handleHelperPanelDragPointerMove,
-        handleInputAreaEditorDoubleClick,
-        handleInputAreaEditorPointerMove,
         helperClipboardText,
         helperPanelDragging,
         helperPanelRef,
         helperPanelStyle,
-        inputAreaHelperMode,
         inputAreaHelperVisible,
-        inputAreaSvgRef,
-        inputHighlightPolygon,
-        inputHitPolygon,
-        polygonHelperActive,
-        removeLastInputAreaPoint,
-        resetControlLayout: () => setControlLayout(CONTROL_LAYOUT),
-        resetInputAreaPolygon,
-        setInputAreaHelperMode,
+        layoutGridVisible,
+        pedalOverlayRef,
+        resetPedalLayout: () => {
+            setControlLayout(CONTROL_LAYOUT);
+            setTapButtonCapGeometry(TAP_BUTTON_CAP_GEOMETRY);
+        },
         startControlDrag,
         startHelperPanelDrag,
-        startInputAreaPointDrag,
         stopControlDrag,
         stopHelperPanelDrag,
-        stopInputAreaEditorDrag,
+        tapButtonCapGeometry,
+        tapButtonStatePreviewVisible,
+        toggleLayoutGrid: () => setLayoutGridVisible((visible) => !visible),
+        toggleTapButtonStatePreview: () => setTapButtonStatePreviewVisible((visible) => !visible),
+        updateTapButtonCapGeometry,
     };
 }
