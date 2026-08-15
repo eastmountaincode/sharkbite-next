@@ -12,12 +12,14 @@ import { AudioEngine } from "@/lib/audio/audio-engine";
 import { InputAreaHelperPanel } from "./input-area-helper-panel";
 import { InputSourceDialog } from "./input-source-dialog";
 import { MoreInfoDialog } from "./more-info-dialog";
+import { OutputSourceDialog } from "./output-source-dialog";
 import { PedalSurface } from "./pedal-surface";
 import { PianoPanel } from "./piano-panel";
 import {
     BUFFER_MODE,
     BUTTON_PRESS_VOLUME,
     DEFAULT_INPUT_DEVICE_ID,
+    DEFAULT_OUTPUT_DEVICE_ID,
     ENABLE_INPUT_AREA_HELPER,
     FRAME_SIZE_MS,
     INITIAL_STATUS,
@@ -36,6 +38,7 @@ import styles from "./sharkbite.module.css";
 import { StartScreen } from "./start-screen";
 import { TopControls } from "./top-controls";
 import { useAudioInputs } from "./use-audio-inputs";
+import { useAudioOutputs } from "./use-audio-outputs";
 import { useKnobControl } from "./use-knob-control";
 import { usePedalEditor } from "./use-pedal-editor";
 import { useSynthController } from "./use-synth-controller";
@@ -43,7 +46,8 @@ import { useSynthController } from "./use-synth-controller";
 export function SharkbiteApp() {
     const engineRef = useRef<AudioEngine | null>(null);
     const buttonPressAudioRef = useRef<HTMLAudioElement | null>(null);
-    const dialogCloseRef = useRef<HTMLButtonElement | null>(null);
+    const inputDialogCloseRef = useRef<HTMLButtonElement | null>(null);
+    const outputDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const infoDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const [status, setStatus] = useState(INITIAL_STATUS);
     const [inputLevel, setInputLevelState] = useState(0);
@@ -51,6 +55,7 @@ export function SharkbiteApp() {
     const [enabledTaps, setEnabledTaps] = useState(INITIAL_TAP_ENABLED);
     const [tapMetrics, setTapMetrics] = useState(INITIAL_TAP_METRICS);
     const [inputDialogOpen, setInputDialogOpen] = useState(false);
+    const [outputDialogOpen, setOutputDialogOpen] = useState(false);
     const [infoDialogOpen, setInfoDialogOpen] = useState(false);
     const [startScreenVisible, setStartScreenVisible] = useState(true);
     const [startingAudio, setStartingAudio] = useState(false);
@@ -100,6 +105,10 @@ export function SharkbiteApp() {
         getEngine,
         statusRunning: status.running,
     });
+    const { audioOutputs, outputDeviceId, refreshAudioOutputs, updateOutputDevice } = useAudioOutputs({
+        getEngine,
+        statusRunning: status.running,
+    });
 
     const {
         controlDragState,
@@ -125,7 +134,7 @@ export function SharkbiteApp() {
         toggleLayoutGrid,
         toggleTapButtonStatePreview,
         updateTapButtonCapGeometry,
-    } = usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible });
+    } = usePedalEditor({ infoDialogOpen, inputDialogOpen, outputDialogOpen, pianoVisible });
 
     useEffect(() => {
         return () => {
@@ -137,7 +146,7 @@ export function SharkbiteApp() {
     useEffect(() => {
         if (!inputDialogOpen) return;
 
-        dialogCloseRef.current?.focus();
+        inputDialogCloseRef.current?.focus();
 
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") setInputDialogOpen(false);
@@ -146,6 +155,19 @@ export function SharkbiteApp() {
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [inputDialogOpen]);
+
+    useEffect(() => {
+        if (!outputDialogOpen) return;
+
+        outputDialogCloseRef.current?.focus();
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setOutputDialogOpen(false);
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [outputDialogOpen]);
 
     useEffect(() => {
         if (!infoDialogOpen) return;
@@ -166,6 +188,7 @@ export function SharkbiteApp() {
             bufferMode: BUFFER_MODE,
             frameMs: FRAME_SIZE_MS,
             inputDeviceId: inputDeviceId || undefined,
+            outputDeviceId: outputDeviceId || undefined,
             inputLevel: inputLevel / 100,
             jitterBufferMs: JITTER_BUFFER_MS,
             masterWet: MASTER_WET_LEVEL,
@@ -173,8 +196,8 @@ export function SharkbiteApp() {
             wetDry: wetDry / 100,
         });
         engine.setSynth(synthWave, SYNTH_LEVEL);
-        await refreshAudioInputs();
-    }, [getEngine, inputDeviceId, inputLevel, refreshAudioInputs, synthWave, wetDry]);
+        await Promise.all([refreshAudioInputs(), refreshAudioOutputs()]);
+    }, [getEngine, inputDeviceId, inputLevel, outputDeviceId, refreshAudioInputs, refreshAudioOutputs, synthWave, wetDry]);
 
     const startFromSplash = async () => {
         if (startingAudio) return;
@@ -236,6 +259,11 @@ export function SharkbiteApp() {
         void refreshAudioInputs();
     };
 
+    const openOutputDialog = () => {
+        setOutputDialogOpen(true);
+        void refreshAudioOutputs();
+    };
+
     const inputKnobStyle = {
         "--knob-rotation": `${knobValueToCssRotation(inputLevel)}deg`,
         "--control-x": `${controlLayout.inputLevel.x}%`,
@@ -271,6 +299,7 @@ export function SharkbiteApp() {
                 controlMoveModeActive={controlMoveModeActive}
                 enabledTaps={enabledTaps}
                 inputDialogOpen={inputDialogOpen}
+                outputDialogOpen={outputDialogOpen}
                 inputKnobStyle={inputKnobStyle}
                 inputLevel={inputLevel}
                 inputLevelDragging={inputLevelControl.dragging}
@@ -292,6 +321,7 @@ export function SharkbiteApp() {
                 onInputLevelPointerDown={inputLevelControl.handlePointerDown}
                 onInputLevelPointerMove={inputLevelControl.handlePointerMove}
                 onOpenInputDialog={openInputDialog}
+                onOpenOutputDialog={openOutputDialog}
                 onStartControlDrag={startControlDrag}
                 onMoveControlDrag={handleControlDragPointerMove}
                 onStopControlDrag={stopControlDrag}
@@ -342,11 +372,22 @@ export function SharkbiteApp() {
             {inputDialogOpen ? (
                 <InputSourceDialog
                     audioInputs={audioInputs}
-                    closeButtonRef={dialogCloseRef}
+                    closeButtonRef={inputDialogCloseRef}
                     defaultInputDeviceId={DEFAULT_INPUT_DEVICE_ID}
                     inputDeviceId={inputDeviceId}
                     onClose={() => setInputDialogOpen(false)}
                     onUpdateInputDevice={updateInputDevice}
+                />
+            ) : null}
+
+            {outputDialogOpen ? (
+                <OutputSourceDialog
+                    audioOutputs={audioOutputs}
+                    closeButtonRef={outputDialogCloseRef}
+                    defaultOutputDeviceId={DEFAULT_OUTPUT_DEVICE_ID}
+                    outputDeviceId={outputDeviceId}
+                    onClose={() => setOutputDialogOpen(false)}
+                    onUpdateOutputDevice={updateOutputDevice}
                 />
             ) : null}
 

@@ -13,6 +13,7 @@ type AreaPoint = {
 type ControlLayoutId =
   | "logo"
   | "outputJack"
+  | "outputSource"
   | "inputJack"
   | "inputSource"
   | "wetDry"
@@ -29,6 +30,7 @@ type PedalSurfaceProps = {
   controlMoveModeActive: boolean;
   enabledTaps: Record<TapId, boolean>;
   inputDialogOpen: boolean;
+  outputDialogOpen: boolean;
   inputKnobStyle: CSSProperties;
   inputLevel: number;
   inputLevelDragging: boolean;
@@ -50,6 +52,7 @@ type PedalSurfaceProps = {
   onInputLevelPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onInputLevelPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onOpenInputDialog: () => void;
+  onOpenOutputDialog: () => void;
   onStartControlDrag: (id: ControlLayoutId, event: ReactPointerEvent<HTMLElement>) => void;
   onMoveControlDrag: (event: ReactPointerEvent<HTMLElement>) => void;
   onStopControlDrag: (event: ReactPointerEvent<HTMLElement>) => void;
@@ -79,6 +82,7 @@ export function PedalSurface({
   controlMoveModeActive,
   enabledTaps,
   inputDialogOpen,
+  outputDialogOpen,
   inputKnobStyle,
   inputLevel,
   inputLevelDragging,
@@ -100,6 +104,7 @@ export function PedalSurface({
   onInputLevelPointerDown,
   onInputLevelPointerMove,
   onOpenInputDialog,
+  onOpenOutputDialog,
   onStartControlDrag,
   onMoveControlDrag,
   onStopControlDrag,
@@ -115,32 +120,43 @@ export function PedalSurface({
       <div className={styles.pedalCanvas}>
         <div ref={pedalOverlayRef} className={styles.pedalOverlay}>
           <span aria-hidden="true" className={styles.layoutGrid} data-visible={layoutGridVisible ? "true" : "false"} />
-          <Image
-            unoptimized
-            alt="Output jack connector"
-            className={styles.topJack}
+          <button
+            aria-expanded={outputDialogOpen}
+            aria-haspopup="dialog"
+            aria-label="Choose output source"
+            className={`${styles.topJack} ${styles.sourceJack}`}
             data-helper-draggable={controlMoveModeActive ? "true" : "false"}
             data-helper-dragging={controlDragState?.id === "outputJack" ? "true" : "false"}
-            draggable={false}
-            height={161}
-            src="/assets/sharkbite/top-jack-1.png"
             style={
               {
                 "--control-x": `${controlLayout.outputJack.x}%`,
                 "--control-y": `${controlLayout.outputJack.y}%`,
               } as CSSProperties
             }
-            width={475}
+            type="button"
+            onClick={() => {
+              if (!controlMoveModeActive) onOpenOutputDialog();
+            }}
             onPointerCancelCapture={(event) => onStopControlDrag(event)}
             onPointerDownCapture={(event) => onStartControlDrag("outputJack", event)}
             onPointerMoveCapture={(event) => onMoveControlDrag(event)}
             onPointerUpCapture={(event) => onStopControlDrag(event)}
-          />
+          >
+            <Image
+              unoptimized
+              alt=""
+              className={styles.topJackGraphic}
+              draggable={false}
+              height={161}
+              src="/assets/sharkbite/top-jack-1.png"
+              width={475}
+            />
+          </button>
           <button
             aria-expanded={inputDialogOpen}
             aria-haspopup="dialog"
             aria-label="Choose input source"
-            className={`${styles.topJack} ${styles.inputSourceJack}`}
+            className={`${styles.topJack} ${styles.sourceJack}`}
             data-helper-draggable={controlMoveModeActive ? "true" : "false"}
             data-helper-dragging={controlDragState?.id === "inputJack" ? "true" : "false"}
             style={
@@ -190,9 +206,32 @@ export function PedalSurface({
             />
           </div>
           <button
+            aria-expanded={outputDialogOpen}
+            aria-haspopup="dialog"
+            className={`${styles.jackLabel} ${styles.sourceJackLabel}`}
+            data-helper-draggable={controlMoveModeActive ? "true" : "false"}
+            data-helper-dragging={controlDragState?.id === "outputSource" ? "true" : "false"}
+            style={
+              {
+                "--control-x": `${controlLayout.outputSource.x}%`,
+                "--control-y": `${controlLayout.outputSource.y}%`,
+              } as CSSProperties
+            }
+            type="button"
+            onClick={() => {
+              if (!controlMoveModeActive) onOpenOutputDialog();
+            }}
+            onPointerCancelCapture={(event) => onStopControlDrag(event)}
+            onPointerDownCapture={(event) => onStartControlDrag("outputSource", event)}
+            onPointerMoveCapture={(event) => onMoveControlDrag(event)}
+            onPointerUpCapture={(event) => onStopControlDrag(event)}
+          >
+            Output
+          </button>
+          <button
             aria-expanded={inputDialogOpen}
             aria-haspopup="dialog"
-            className={`${styles.jackLabel} ${styles.inputJackLabel}`}
+            className={`${styles.jackLabel} ${styles.sourceJackLabel}`}
             data-helper-draggable={controlMoveModeActive ? "true" : "false"}
             data-helper-dragging={controlDragState?.id === "inputSource" ? "true" : "false"}
             style={
@@ -210,7 +249,7 @@ export function PedalSurface({
             onPointerMoveCapture={(event) => onMoveControlDrag(event)}
             onPointerUpCapture={(event) => onStopControlDrag(event)}
           >
-            Input Source
+            Input
           </button>
           <div
             aria-label="Dry wet mix"

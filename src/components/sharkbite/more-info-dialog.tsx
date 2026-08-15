@@ -62,7 +62,18 @@ export function MoreInfoDialog({ closeButtonRef, onClose }: MoreInfoDialogProps)
             of a shark biting one of these undersea cables.
           </p>
           <footer className={styles.infoCreator}>
-            <span>Created by Andrew Boylan</span>
+            <span>
+              Created by{" "}
+              <a href="https://www.andrew-boylan.com/" rel="noreferrer" target="_blank">
+                Andrew Boylan
+              </a>
+            </span>
+            <span>
+              Illustrations by{" "}
+              <a href="https://lyliali.substack.com/" rel="noreferrer" target="_blank">
+                Lylia Li
+              </a>
+            </span>
             <nav aria-label="Andrew Boylan links" className={styles.infoCreatorLinks}>
               <a
                 aria-label="Andrew Boylan on Instagram"

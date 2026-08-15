@@ -30,6 +30,7 @@ export type TapButtonCapGeometryBySide = Record<
 export type ControlLayoutId =
   | "logo"
   | "outputJack"
+  | "outputSource"
   | "inputJack"
   | "inputSource"
   | "wetDry"
@@ -54,10 +55,13 @@ export type HelperPanelDragState = {
   pointerId: number;
 };
 
-export type AudioInputOption = {
+export type AudioDeviceOption = {
   deviceId: string;
   label: string;
 };
+
+export type AudioInputOption = AudioDeviceOption;
+export type AudioOutputOption = AudioDeviceOption;
 
 export type KnobDragState = {
   currentKnobAngle: number;
@@ -71,6 +75,7 @@ export const FRAME_SIZE_MS: FrameSizeMs = 20;
 export const BUFFER_MODE: BufferMode = "buffered";
 export const JITTER_BUFFER_MS = 50;
 export const DEFAULT_INPUT_DEVICE_ID = "";
+export const DEFAULT_OUTPUT_DEVICE_ID = "";
 export const SYNTH_LEVEL = 0.8;
 export const SYNTH_DEFAULT_OCTAVE = 4;
 export const SYNTH_MIN_OCTAVE = 1;
@@ -92,6 +97,7 @@ export const INPUT_LEVEL_SPRITE_DEGREES_PER_FRAME = 360 / INPUT_LEVEL_SPRITE_FRA
 export const CONTROL_LAYOUT_IDS: ControlLayoutId[] = [
   "logo",
   "outputJack",
+  "outputSource",
   "inputJack",
   "inputSource",
   "wetDry",
@@ -104,9 +110,10 @@ export const CONTROL_LAYOUT_IDS: ControlLayoutId[] = [
 
 export const CONTROL_LAYOUT: Record<ControlLayoutId, AreaPoint> = {
   logo: { x: 49, y: 41.5 },
-  outputJack: { x: 21, y: 3.5 },
+  outputJack: { x: 22.8, y: 3.5 },
+  outputSource: { x: 22.1, y: 17.8 },
   inputJack: { x: 79.7, y: 3.5 },
-  inputSource: { x: 79.1, y: 17 },
+  inputSource: { x: 79.3, y: 17.2 },
   wetDry: { x: 22.1, y: 35.4 },
   inputLevel: { x: 77.4, y: 35.7 },
   rich: { x: 20, y: 74.1 },
@@ -122,7 +129,7 @@ export const TAP_BUTTON_CAP_GEOMETRY: TapButtonCapGeometryBySide = {
   },
   left: {
     off: { x: 44.5, y: 50, size: 100 },
-    on: { x: 47.5, y: 49.5, size: 86 },
+    on: { x: 47.5, y: 49, size: 86 },
   },
 };
 

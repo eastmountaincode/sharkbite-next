@@ -28,10 +28,11 @@ import {
 type UsePedalEditorArgs = {
     infoDialogOpen: boolean;
     inputDialogOpen: boolean;
+    outputDialogOpen: boolean;
     pianoVisible: boolean;
 };
 
-export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }: UsePedalEditorArgs) {
+export function usePedalEditor({ infoDialogOpen, inputDialogOpen, outputDialogOpen, pianoVisible }: UsePedalEditorArgs) {
     const helperPanelRef = useRef<HTMLElement | null>(null);
     const pedalOverlayRef = useRef<HTMLDivElement | null>(null);
     const controlDragRef = useRef<ControlDragState | null>(null);
@@ -110,7 +111,8 @@ export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }
                 !isHelperKey ||
                 pianoVisible ||
                 infoDialogOpen ||
-                inputDialogOpen
+                inputDialogOpen ||
+                outputDialogOpen
             ) {
                 return;
             }
@@ -121,7 +123,7 @@ export function usePedalEditor({ infoDialogOpen, inputDialogOpen, pianoVisible }
 
         document.addEventListener("keydown", handleKeyDown, true);
         return () => document.removeEventListener("keydown", handleKeyDown, true);
-    }, [infoDialogOpen, inputDialogOpen, pianoVisible]);
+    }, [infoDialogOpen, inputDialogOpen, outputDialogOpen, pianoVisible]);
 
     const getPedalPoint = (clientX: number, clientY: number) => {
         const pedalOverlay = pedalOverlayRef.current;

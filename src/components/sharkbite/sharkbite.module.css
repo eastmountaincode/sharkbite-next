@@ -91,7 +91,7 @@
 
 .pianoPanel {
   background: var(--panel);
-  border: 2px solid var(--line);
+  border: 1px solid var(--line);
   box-shadow: 0 18px 38px rgba(15, 15, 15, 0.16);
   color: var(--line);
   display: none;
@@ -203,7 +203,7 @@
 
 .whiteKey {
   align-items: center;
-  background: #fbfaf6;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-left: 0;
   color: var(--line);
@@ -237,11 +237,11 @@
 }
 
 .whiteKey.keyDown {
-  background: #d8cfb7;
+  background: var(--accent);
 }
 
 .blackKey.keyDown {
-  background: #d8cfb7;
+  background: var(--accent);
   color: var(--line);
 }
 
@@ -270,7 +270,7 @@
   z-index: 1;
 }
 
-.inputSourceJack {
+.sourceJack {
   appearance: none;
   background: transparent;
   border: 0;
@@ -280,7 +280,7 @@
   pointer-events: auto;
 }
 
-.inputSourceJack:focus-visible {
+.sourceJack:focus-visible {
   outline: none;
 }
 
@@ -290,8 +290,8 @@
   width: 100%;
 }
 
-.inputSourceJack:hover .topJackGraphic,
-.inputSourceJack:focus-visible .topJackGraphic {
+.sourceJack:hover .topJackGraphic,
+.sourceJack:focus-visible .topJackGraphic {
   opacity: 0.68;
 }
 
@@ -321,7 +321,7 @@
   white-space: nowrap;
 }
 
-.inputJackLabel {
+.sourceJackLabel {
   appearance: none;
   background: transparent;
   border: 0;
@@ -333,8 +333,8 @@
   transform: translate(-50%, -50%) rotate(-1deg);
 }
 
-.inputJackLabel:hover,
-.inputJackLabel:focus-visible {
+.sourceJackLabel:hover,
+.sourceJackLabel:focus-visible {
   opacity: 0.68;
   outline: none;
 }
@@ -506,7 +506,7 @@
 
 .knobControl[data-helper-draggable="true"],
 .pedalLogoControl[data-helper-draggable="true"],
-.inputJackLabel[data-helper-draggable="true"],
+.sourceJackLabel[data-helper-draggable="true"],
 .topJack[data-helper-draggable="true"],
 .tapButton[data-helper-draggable="true"] {
   cursor: grab;
@@ -518,7 +518,7 @@
 
 .knobControl[data-helper-dragging="true"],
 .pedalLogoControl[data-helper-dragging="true"],
-.inputJackLabel[data-helper-dragging="true"],
+.sourceJackLabel[data-helper-dragging="true"],
 .topJack[data-helper-dragging="true"],
 .tapButton[data-helper-dragging="true"] {
   cursor: grabbing;

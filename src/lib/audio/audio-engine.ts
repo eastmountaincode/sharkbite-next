@@ -5,6 +5,9 @@ import { clearTapSignalFrame, writeTapSignalFrame } from "@/lib/audio/tap-signal
 import type { BufferMode, EngineStatus, TapMetricsUpdate, TapRuntimeSettings } from "@/lib/audio/types";
 
 type BrowserWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+type OutputRoutableAudioContext = AudioContext & {
+  setSinkId?: (sinkId: string) => Promise<void>;
+};
 const RTT_METRICS_MS = 250;
 const SYNTH_VOICE_SUSTAIN_RATIO = 0.7;
 const SYNTH_VOICE_REBALANCE_SECONDS = 0.035;
@@ -49,6 +52,7 @@ export type StartOptions = {
   jitterBufferMs: number;
   synthLevel: number;
   inputDeviceId?: string;
+  outputDeviceId?: string;
 };
 
 export class AudioEngine {
@@ -130,6 +134,9 @@ export class AudioEngine {
     }
 
     this.ctx = new AudioContextCtor();
+    if (options.outputDeviceId) {
+      await this.routeOutput(options.outputDeviceId);
+    }
     this.frameMs = options.frameMs;
     this.bufferMode = options.bufferMode;
     this.jitterBufferMs = options.jitterBufferMs;
@@ -264,6 +271,19 @@ export class AudioEngine {
     }
   }
 
+  async setOutputDevice(outputDeviceId?: string) {
+    if (!this.ctx) return false;
+
+    try {
+      await this.routeOutput(outputDeviceId);
+      this.setStatus(this.running, this.micEnabled, "Audio output changed.");
+      return true;
+    } catch {
+      this.setStatus(this.running, this.micEnabled, "Could not use that audio output. Keeping previous output.");
+      return false;
+    }
+  }
+
   setBuffering(bufferMode: BufferMode, jitterBufferMs: number) {
     this.bufferMode = bufferMode;
     this.jitterBufferMs = jitterBufferMs;
@@ -351,6 +371,16 @@ export class AudioEngine {
 
   private voicePeakForCount(count: number) {
     return Math.max(0.0001, this.synthLevel / Math.sqrt(Math.max(1, count)));
+  }
+
+  private async routeOutput(outputDeviceId?: string) {
+    const context = this.ctx as OutputRoutableAudioContext | null;
+    if (!context?.setSinkId) {
+      if (outputDeviceId) throw new Error("Audio output selection is not supported in this browser.");
+      return;
+    }
+
+    await context.setSinkId(outputDeviceId ?? "");
   }
 
   private voiceSustainForCount(count: number) {
