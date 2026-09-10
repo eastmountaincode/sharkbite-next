@@ -1,3 +1,4 @@
+import { AUDIO_OUTPUT_CHANNELS, type AudioOutputChannel } from "@/lib/audio/audioOutput";
 import { X } from "lucide-react";
 import type { RefObject } from "react";
 import type { AudioOutputOption } from "./sharkbite-model";
@@ -8,6 +9,11 @@ type OutputSourceDialogProps = {
   closeButtonRef: RefObject<HTMLButtonElement | null>;
   defaultOutputDeviceId: string;
   outputDeviceId: string;
+  outputLabel: string;
+  outputChannel: AudioOutputChannel;
+  outputError?: string;
+  onUpdateOutputChannel: (channel: AudioOutputChannel) => void;
+  onRetryOutput: () => void;
   onClose: () => void;
   onUpdateOutputDevice: (deviceId: string) => void;
 };
@@ -17,6 +23,11 @@ export function OutputSourceDialog({
   closeButtonRef,
   defaultOutputDeviceId,
   outputDeviceId,
+  outputLabel,
+  outputChannel,
+  outputError,
+  onUpdateOutputChannel,
+  onRetryOutput,
   onClose,
   onUpdateOutputDevice,
 }: OutputSourceDialogProps) {
@@ -46,9 +57,12 @@ export function OutputSourceDialog({
 
         <div className={styles.inputDialogBody}>
           <label className={styles.inputControl}>
-            <span className={styles.srOnly}>Output Source</span>
+            <span>Audio device</span>
             <select value={outputDeviceId} onChange={(event) => onUpdateOutputDevice(event.target.value)}>
               <option value={defaultOutputDeviceId}>System Default</option>
+              {outputDeviceId && !audioOutputs.some((device) => device.deviceId === outputDeviceId) ? (
+                <option value={outputDeviceId}>{outputLabel} (unavailable)</option>
+              ) : null}
               {audioOutputs.map((device) => (
                 <option key={device.deviceId} value={device.deviceId}>
                   {device.label}
@@ -56,6 +70,16 @@ export function OutputSourceDialog({
               ))}
             </select>
           </label>
+          <label className={styles.inputControl}>
+            <span>Output channels</span>
+            <select value={outputChannel} onChange={(event) => onUpdateOutputChannel(event.target.value as AudioOutputChannel)}>
+              {AUDIO_OUTPUT_CHANNELS.slice(0, 8).map((pair) => (
+                <option key={pair.value} value={pair.value}>{pair.label}</option>
+              ))}
+            </select>
+          </label>
+          <button className={`${styles.iconButton} ${styles.reconnectOutput}`} type="button" onClick={onRetryOutput}>Reconnect output</button>
+          {outputError ? <p role="alert">{outputError}</p> : null}
         </div>
       </section>
     </div>

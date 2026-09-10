@@ -45,7 +45,6 @@ import { useSynthController } from "./use-synth-controller";
 
 export function SharkbiteApp() {
     const engineRef = useRef<AudioEngine | null>(null);
-    const buttonPressAudioRef = useRef<HTMLAudioElement | null>(null);
     const inputDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const outputDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const infoDialogCloseRef = useRef<HTMLButtonElement | null>(null);
@@ -105,7 +104,7 @@ export function SharkbiteApp() {
         getEngine,
         statusRunning: status.running,
     });
-    const { audioOutputs, outputDeviceId, refreshAudioOutputs, updateOutputDevice } = useAudioOutputs({
+    const { audioOutputs, outputDeviceId, outputLabel, outputChannel, outputsReady, refreshAudioOutputs, updateOutputDevice, updateOutputChannel, retryOutput } = useAudioOutputs({
         getEngine,
         statusRunning: status.running,
     });
@@ -189,6 +188,7 @@ export function SharkbiteApp() {
             frameMs: FRAME_SIZE_MS,
             inputDeviceId: inputDeviceId || undefined,
             outputDeviceId: outputDeviceId || undefined,
+            outputChannel,
             inputLevel: inputLevel / 100,
             jitterBufferMs: JITTER_BUFFER_MS,
             masterWet: MASTER_WET_LEVEL,
@@ -197,7 +197,7 @@ export function SharkbiteApp() {
         });
         engine.setSynth(synthWave, SYNTH_LEVEL);
         await Promise.all([refreshAudioInputs(), refreshAudioOutputs()]);
-    }, [getEngine, inputDeviceId, inputLevel, outputDeviceId, refreshAudioInputs, refreshAudioOutputs, synthWave, wetDry]);
+    }, [getEngine, inputDeviceId, inputLevel, outputDeviceId, outputChannel, refreshAudioInputs, refreshAudioOutputs, synthWave, wetDry]);
 
     const startFromSplash = async () => {
         if (startingAudio) return;
@@ -239,15 +239,8 @@ export function SharkbiteApp() {
     });
 
     const playButtonPress = useCallback(() => {
-        const sound = buttonPressAudioRef.current;
-        if (!sound) return;
-
-        sound.volume = BUTTON_PRESS_VOLUME;
-        sound.currentTime = 0;
-        void sound.play().catch(() => {
-            // Browser autoplay policy may block this until a user gesture unlocks audio.
-        });
-    }, []);
+        void getEngine().playButtonPress(BUTTON_PRESS_VOLUME);
+    }, [getEngine]);
 
     const toggleTap = (tapId: TapId) => {
         playButtonPress();
@@ -285,7 +278,11 @@ export function SharkbiteApp() {
 
     return (
         <main className={styles.shell} data-piano-open={pianoOpen ? "true" : "false"}>
-            <audio ref={buttonPressAudioRef} preload="auto" src="/assets/sharkbite/button-press.mp3" />
+            {!outputDialogOpen && status.message.startsWith("Output muted:") ? (
+                <button className={styles.outputWarning} role="alert" type="button" onClick={openOutputDialog}>
+                    {status.message} Open output settings
+                </button>
+            ) : null}
             <TopControls
                 infoDialogOpen={infoDialogOpen}
                 pianoVisible={pianoVisible}
@@ -386,6 +383,11 @@ export function SharkbiteApp() {
                     closeButtonRef={outputDialogCloseRef}
                     defaultOutputDeviceId={DEFAULT_OUTPUT_DEVICE_ID}
                     outputDeviceId={outputDeviceId}
+                    outputLabel={outputLabel}
+                    outputChannel={outputChannel}
+                    outputError={status.message.startsWith("Output muted:") ? status.message : undefined}
+                    onUpdateOutputChannel={updateOutputChannel}
+                    onRetryOutput={retryOutput}
                     onClose={() => setOutputDialogOpen(false)}
                     onUpdateOutputDevice={updateOutputDevice}
                 />
@@ -395,7 +397,7 @@ export function SharkbiteApp() {
                 <MoreInfoDialog closeButtonRef={infoDialogCloseRef} onClose={() => setInfoDialogOpen(false)} />
             ) : null}
 
-            {startScreenVisible ? <StartScreen startingAudio={startingAudio} onStart={() => void startFromSplash()} /> : null}
+            {startScreenVisible ? <StartScreen startingAudio={startingAudio || !outputsReady} onStart={() => void startFromSplash()} /> : null}
         </main>
     );
 }

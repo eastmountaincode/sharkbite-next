@@ -1,3 +1,5 @@
+import { createAudioOutputRouter } from "./audioOutputRouter";
+import type { AudioOutputChannel } from "./audioOutput";
 import { DEFAULT_TAP_SETTINGS, type FrameSizeMs, type TapConfig, type TapId } from "@/config/taps";
 import { buildTapSocketUrl } from "@/lib/audio/connection-url";
 import { packFrame, unpackFrame } from "@/lib/audio/frame-codec";
@@ -5,9 +7,6 @@ import { clearTapSignalFrame, writeTapSignalFrame } from "@/lib/audio/tap-signal
 import type { BufferMode, EngineStatus, TapMetricsUpdate, TapRuntimeSettings } from "@/lib/audio/types";
 
 type BrowserWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
-type OutputRoutableAudioContext = AudioContext & {
-  setSinkId?: (sinkId: string) => Promise<void>;
-};
 const RTT_METRICS_MS = 250;
 const SYNTH_VOICE_SUSTAIN_RATIO = 0.7;
 const SYNTH_VOICE_REBALANCE_SECONDS = 0.035;
@@ -53,6 +52,7 @@ export type StartOptions = {
   synthLevel: number;
   inputDeviceId?: string;
   outputDeviceId?: string;
+  outputChannel?: AudioOutputChannel;
 };
 
 export class AudioEngine {
@@ -63,6 +63,12 @@ export class AudioEngine {
   private readonly onVu: AudioEngineOptions["onVu"];
 
   private ctx: AudioContext | null = null;
+  private outputRouter: ReturnType<typeof createAudioOutputRouter> | null = null;
+  private outputQueue: Promise<boolean> = Promise.resolve(true);
+  private outputRevision = 0;
+  private outputError: string | null = null;
+  private buttonBuffer: Promise<AudioBuffer> | null = null;
+  private buttonSource: AudioBufferSourceNode | null = null;
   private micNode: MediaStreamAudioSourceNode | null = null;
   private micGain: GainNode | null = null;
   private micStream: MediaStream | null = null;
@@ -134,9 +140,8 @@ export class AudioEngine {
     }
 
     this.ctx = new AudioContextCtor();
-    if (options.outputDeviceId) {
-      await this.routeOutput(options.outputDeviceId);
-    }
+    this.outputRouter = createAudioOutputRouter(this.ctx, (message) => this.muteOutput(message));
+    await this.setOutputRoute(options.outputDeviceId ?? "", options.outputChannel ?? "stereo");
     this.frameMs = options.frameMs;
     this.bufferMode = options.bufferMode;
     this.jitterBufferMs = options.jitterBufferMs;
@@ -176,13 +181,13 @@ export class AudioEngine {
     this.dryGain.connect(this.masterGain);
     this.wetGain.connect(this.masterGain);
     this.masterGain.connect(this.masterLimiter);
-    this.masterLimiter.connect(this.ctx.destination);
+    this.masterLimiter.connect(this.outputRouter.input);
     this.synthGain.connect(this.sourceBus);
 
     const captureSink = this.ctx.createGain();
     captureSink.gain.value = 0;
     this.captureNode.connect(captureSink);
-    captureSink.connect(this.ctx.destination);
+    captureSink.connect(this.outputRouter.input);
 
     this.micGain = this.ctx.createGain();
     this.micGain.gain.value = options.inputLevel;
@@ -198,6 +203,7 @@ export class AudioEngine {
     }
 
     this.running = true;
+    if (this.outputError) this.setStatus(true, this.micEnabled, this.outputError);
     this.setWetDry(options.wetDry, options.masterWet);
     this.applyPrebuffer();
     this.startVuLoop();
@@ -236,7 +242,12 @@ export class AudioEngine {
     if (this.vuFrame !== null) window.cancelAnimationFrame(this.vuFrame);
 
     this.micStream?.getTracks().forEach((track) => track.stop());
+    this.outputRevision++;
+    this.outputRouter?.dispose();
+    this.outputRouter = null;
     void this.ctx?.close();
+    this.ctx = null;
+    this.running = false;
   }
 
   setFrameMs(frameMs: FrameSizeMs) {
@@ -271,17 +282,64 @@ export class AudioEngine {
     }
   }
 
-  async setOutputDevice(outputDeviceId?: string) {
-    if (!this.ctx) return false;
-
+  async playButtonPress(volume: number) {
+    const ctx = this.ctx;
+    const router = this.outputRouter;
+    if (!ctx || !router) return;
+    await this.resume();
     try {
-      await this.routeOutput(outputDeviceId);
-      this.setStatus(this.running, this.micEnabled, "Audio output changed.");
-      return true;
+      this.buttonBuffer ??= fetch("/assets/sharkbite/button-press.mp3")
+        .then((response) => {
+          if (!response.ok) throw new Error("Button sound unavailable");
+          return response.arrayBuffer();
+        })
+        .then((data) => ctx.decodeAudioData(data));
+      const buffer = await this.buttonBuffer;
+      if (ctx !== this.ctx || router !== this.outputRouter) return;
+      this.buttonSource?.stop();
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      gain.gain.value = volume;
+      source.buffer = buffer;
+      source.connect(gain).connect(router.input);
+      source.onended = () => { source.disconnect(); gain.disconnect(); };
+      this.buttonSource = source;
+      source.start();
     } catch {
-      this.setStatus(this.running, this.micEnabled, "Could not use that audio output. Keeping previous output.");
-      return false;
+      this.buttonBuffer = null;
     }
+  }
+
+  muteOutput(message = "Output muted: choose an available audio device.") {
+    this.outputRevision++;
+    this.outputRouter?.mute();
+    this.outputError = message;
+    this.setStatus(this.running, this.micEnabled, message);
+  }
+
+  setOutputRoute(deviceId: string, channel: AudioOutputChannel): Promise<boolean> {
+    const router = this.outputRouter;
+    if (!router) return Promise.resolve(false);
+    const revision = ++this.outputRevision;
+    router.mute();
+    this.outputQueue = this.outputQueue.then(async () => {
+      if (revision !== this.outputRevision || router !== this.outputRouter) return false;
+      try {
+        await router.setDevice(deviceId);
+        if (revision !== this.outputRevision || router !== this.outputRouter) return false;
+        router.setChannel(channel);
+        this.outputError = null;
+        this.setStatus(this.running, this.micEnabled, "Audio output changed.");
+        return true;
+      } catch (error) {
+        if (revision === this.outputRevision) {
+          this.outputError = "Output muted: " + (error instanceof Error ? error.message.replace(/^Output muted: /, "") : "Choose an available device and pair.");
+          this.setStatus(this.running, this.micEnabled, this.outputError);
+        }
+        return false;
+      }
+    });
+    return this.outputQueue;
   }
 
   setBuffering(bufferMode: BufferMode, jitterBufferMs: number) {
@@ -371,16 +429,6 @@ export class AudioEngine {
 
   private voicePeakForCount(count: number) {
     return Math.max(0.0001, this.synthLevel / Math.sqrt(Math.max(1, count)));
-  }
-
-  private async routeOutput(outputDeviceId?: string) {
-    const context = this.ctx as OutputRoutableAudioContext | null;
-    if (!context?.setSinkId) {
-      if (outputDeviceId) throw new Error("Audio output selection is not supported in this browser.");
-      return;
-    }
-
-    await context.setSinkId(outputDeviceId ?? "");
   }
 
   private voiceSustainForCount(count: number) {
@@ -588,7 +636,7 @@ export class AudioEngine {
   }
 
   private setStatus(running: boolean, micEnabled: boolean, message: string) {
-    this.onStatus({ running, micEnabled, message });
+    this.onStatus({ running, micEnabled, message: this.outputError ?? message });
   }
 
   private async connectInput(inputDeviceId?: string) {

@@ -9,7 +9,8 @@
     "lint": "eslint",
     "generate:og": "bash scripts/generate-og-image.sh",
     "do:droplets": "scripts/do/list-droplets.sh",
-    "do:verify-taps": "scripts/do/verify-taps.sh"
+    "do:verify-taps": "scripts/do/verify-taps.sh",
+    "test:audio": "node scripts/test-audio-routing.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
@@ -26,6 +27,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "web-audio-engine": "^0.13.4"
   }
 }
