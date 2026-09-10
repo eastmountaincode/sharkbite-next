@@ -26,4 +26,6 @@ export type EngineStatus = {
   running: boolean;
   micEnabled: boolean;
   message: string;
+  outputDeviceId?: string;
+  outputChannelCount?: number;
 };

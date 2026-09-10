@@ -385,6 +385,7 @@ export function SharkbiteApp() {
                     outputDeviceId={outputDeviceId}
                     outputLabel={outputLabel}
                     outputChannel={outputChannel}
+                    outputChannelCount={status.outputDeviceId === outputDeviceId ? status.outputChannelCount ?? 0 : 0}
                     outputError={status.message.startsWith("Output muted:") ? status.message : undefined}
                     onUpdateOutputChannel={updateOutputChannel}
                     onRetryOutput={retryOutput}

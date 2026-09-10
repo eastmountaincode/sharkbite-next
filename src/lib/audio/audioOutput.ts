@@ -19,6 +19,11 @@ export const DEFAULT_AUDIO_OUTPUT = {
   label: 'System default',
 } satisfies AudioOutputDevice;
 
+export function availableOutputPairs(deviceId: string, channelCount: number) {
+  if (!deviceId || channelCount <= 2) return [];
+  return AUDIO_OUTPUT_CHANNELS.slice(0, 8).filter((_, index) => (index + 1) * 2 <= channelCount);
+}
+
 const AUDIO_OUTPUT_STORAGE_KEY = 'sharkbite.audio-output.v1';
 const AUDIO_OUTPUT_CHANNEL_STORAGE_KEY = 'sharkbite.audio-output-channel.v1';
 

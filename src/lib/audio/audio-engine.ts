@@ -1,4 +1,5 @@
 import { createAudioOutputRouter } from "./audioOutputRouter";
+import { createMonoSourceBus } from "./mono-source-bus";
 import type { AudioOutputChannel } from "./audioOutput";
 import { DEFAULT_TAP_SETTINGS, type FrameSizeMs, type TapConfig, type TapId } from "@/config/taps";
 import { buildTapSocketUrl } from "@/lib/audio/connection-url";
@@ -67,6 +68,7 @@ export class AudioEngine {
   private outputQueue: Promise<boolean> = Promise.resolve(true);
   private outputRevision = 0;
   private outputError: string | null = null;
+  private outputDeviceId: string | undefined;
   private buttonBuffer: Promise<AudioBuffer> | null = null;
   private buttonSource: AudioBufferSourceNode | null = null;
   private micNode: MediaStreamAudioSourceNode | null = null;
@@ -157,7 +159,7 @@ export class AudioEngine {
     this.wetGain = this.ctx.createGain();
     this.masterGain = this.ctx.createGain();
     this.masterLimiter = this.ctx.createDynamicsCompressor();
-    this.sourceBus = this.ctx.createGain();
+    this.sourceBus = createMonoSourceBus(this.ctx);
     this.synthGain = this.ctx.createGain();
     this.analyser = this.ctx.createAnalyser();
     this.captureNode = new AudioWorkletNode(this.ctx, "sharkbite-capture");
@@ -311,6 +313,7 @@ export class AudioEngine {
   }
 
   muteOutput(message = "Output muted: choose an available audio device.") {
+    this.outputDeviceId = undefined;
     this.outputRevision++;
     this.outputRouter?.mute();
     this.outputError = message;
@@ -324,10 +327,12 @@ export class AudioEngine {
     router.mute();
     this.outputQueue = this.outputQueue.then(async () => {
       if (revision !== this.outputRevision || router !== this.outputRouter) return false;
+      this.outputDeviceId = undefined;
       try {
         await router.setDevice(deviceId);
         if (revision !== this.outputRevision || router !== this.outputRouter) return false;
-        router.setChannel(channel);
+        this.outputDeviceId = deviceId;
+        router.setChannel(deviceId ? channel : "stereo");
         this.outputError = null;
         this.setStatus(this.running, this.micEnabled, "Audio output changed.");
         return true;
@@ -636,7 +641,11 @@ export class AudioEngine {
   }
 
   private setStatus(running: boolean, micEnabled: boolean, message: string) {
-    this.onStatus({ running, micEnabled, message: this.outputError ?? message });
+    this.onStatus({
+      running, micEnabled, message: this.outputError ?? message,
+      outputDeviceId: this.outputDeviceId,
+      outputChannelCount: this.outputDeviceId === undefined ? 0 : this.ctx?.destination.maxChannelCount ?? 0,
+    });
   }
 
   private async connectInput(inputDeviceId?: string) {

@@ -1,4 +1,4 @@
-import { AUDIO_OUTPUT_CHANNELS, type AudioOutputChannel } from "@/lib/audio/audioOutput";
+import { AUDIO_OUTPUT_CHANNELS, availableOutputPairs, type AudioOutputChannel } from "@/lib/audio/audioOutput";
 import { X } from "lucide-react";
 import type { RefObject } from "react";
 import type { AudioOutputOption } from "./sharkbite-model";
@@ -11,6 +11,7 @@ type OutputSourceDialogProps = {
   outputDeviceId: string;
   outputLabel: string;
   outputChannel: AudioOutputChannel;
+  outputChannelCount: number;
   outputError?: string;
   onUpdateOutputChannel: (channel: AudioOutputChannel) => void;
   onRetryOutput: () => void;
@@ -25,12 +26,16 @@ export function OutputSourceDialog({
   outputDeviceId,
   outputLabel,
   outputChannel,
+  outputChannelCount,
   outputError,
   onUpdateOutputChannel,
   onRetryOutput,
   onClose,
   onUpdateOutputDevice,
 }: OutputSourceDialogProps) {
+  const pairs = availableOutputPairs(outputDeviceId, outputChannelCount);
+  const unavailablePair = outputDeviceId && outputChannel !== "stereo" && outputError &&
+    !pairs.some((pair) => pair.value === outputChannel);
   return (
     <div
       className={styles.inputDialogBackdrop}
@@ -70,16 +75,19 @@ export function OutputSourceDialog({
               ))}
             </select>
           </label>
-          <label className={styles.inputControl}>
+          {pairs.length > 1 || unavailablePair ? <label className={styles.inputControl}>
             <span>Output channels</span>
             <select value={outputChannel} onChange={(event) => onUpdateOutputChannel(event.target.value as AudioOutputChannel)}>
-              {AUDIO_OUTPUT_CHANNELS.slice(0, 8).map((pair) => (
+              {unavailablePair ? <option value={outputChannel} disabled>{AUDIO_OUTPUT_CHANNELS.find((pair) => pair.value === outputChannel)?.label} (unavailable)</option> : null}
+              {(pairs.length ? pairs : AUDIO_OUTPUT_CHANNELS.slice(0, 1)).map((pair) => (
                 <option key={pair.value} value={pair.value}>{pair.label}</option>
               ))}
             </select>
-          </label>
-          <button className={`${styles.iconButton} ${styles.reconnectOutput}`} type="button" onClick={onRetryOutput}>Reconnect output</button>
-          {outputError ? <p role="alert">{outputError}</p> : null}
+          </label> : null}
+          {outputError ? <>
+            <p role="alert">{outputError}</p>
+            <button className={`${styles.iconButton} ${styles.reconnectOutput}`} type="button" onClick={onRetryOutput}>Try again</button>
+          </> : null}
         </div>
       </section>
     </div>

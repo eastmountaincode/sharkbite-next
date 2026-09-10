@@ -354,6 +354,63 @@ await engineTest("late matching sink event cannot undo an explicit mute", async 
   for (let ch = 0; ch < 16; ch++) check(rendered.getChannelData(ch).every((v) => v === 0), "mute bypassed");
 });
 
+await engineTest("system default clears a previously selected discrete pair", async () => {
+  const pairs = [];
+  const { engine } = fixture({ mute() {}, async setDevice() {}, setChannel(pair) { pairs.push(pair); } });
+  await engine.setOutputRoute("", "pair-5");
+  check(JSON.stringify(pairs) === '["stereo"]', "system default retained hidden pair");
+});
+await engineTest("channel choices follow selected device capacity", async () => {
+  const { availableOutputPairs } = await import(compileModule(new URL("../src/lib/audio/audioOutput.ts", import.meta.url)));
+  check(availableOutputPairs("", 16).length === 0, "system default exposes channels");
+  check(availableOutputPairs("stereo-device", 2).length === 0, "stereo device exposes channels");
+  check(availableOutputPairs("unknown", 0).length === 0, "unknown capacity exposes channels");
+  check(availableOutputPairs("eight-channel", 8).length === 4, "eight-channel device pair count");
+  check(availableOutputPairs("sixteen-channel", 16).length === 8, "sixteen-channel device pair count");
+});
+
+for (const inputChannels of [1, 2]) {
+  await engineTest(`mono vocal dry path is centered at unity from ${inputChannels}-channel input`, async () => {
+    const { createMonoSourceBus } = await import(compileModule(new URL("../src/lib/audio/mono-source-bus.ts", import.meta.url)));
+    const { createAudioOutputRouter } = await import(routerURL);
+    const ctx = new OfflineAudioContext(16, 512, 48000);
+    const bus = createMonoSourceBus(ctx), router = createAudioOutputRouter(ctx);
+    const source = ctx.createBufferSource();
+    source.buffer = ctx.createBuffer(inputChannels, 512, 48000);
+    source.buffer.getChannelData(0).fill(0.125);
+    source.connect(bus).connect(router.input);
+    router.setChannel("pair-5");
+    source.start();
+    const rendered = await ctx.startRendering();
+    for (let channel = 0; channel < 16; channel++) {
+      const expected = channel === 4 || channel === 5 ? 0.125 : 0;
+      check(rendered.getChannelData(channel).every((value) => Math.abs(value - expected) < 1e-6), `incorrect vocal level on channel ${channel + 1}`);
+    }
+  });
+}
+
+await engineTest("centered dry signal preserves independently panned wet return", async () => {
+  const { createMonoSourceBus } = await import(compileModule(new URL("../src/lib/audio/mono-source-bus.ts", import.meta.url)));
+  const { createAudioOutputRouter } = await import(routerURL);
+  const ctx = new OfflineAudioContext(16, 512, 48000);
+  const bus = createMonoSourceBus(ctx), router = createAudioOutputRouter(ctx);
+  const source = ctx.createBufferSource(), master = ctx.createGain(), wetPan = ctx.createStereoPanner();
+  source.buffer = ctx.createBuffer(2, 512, 48000);
+  source.buffer.getChannelData(0).fill(0.125);
+  wetPan.pan.value = 1;
+  source.connect(bus);
+  bus.connect(master);
+  bus.connect(wetPan).connect(master);
+  master.connect(router.input);
+  router.setChannel("pair-5");
+  source.start();
+  const rendered = await ctx.startRendering();
+  for (let channel = 0; channel < 16; channel++) {
+    const expected = channel === 4 ? 0.125 : channel === 5 ? 0.25 : 0;
+    check(rendered.getChannelData(channel).every((value) => Math.abs(value - expected) < 1e-6), `dry/wet pan mismatch on channel ${channel + 1}`);
+  }
+});
+
 results.textContent += `\n${passed} passed; ${failed} failed.`;
 console.log(results.textContent);
 if (failed) process.exitCode = 1;

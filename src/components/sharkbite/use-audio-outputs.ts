@@ -22,6 +22,7 @@ export function useAudioOutputs({ getEngine, statusRunning }: UseAudioOutputsPar
   const [outputChannel, setOutputChannel] = useState<AudioOutputChannel>("stereo");
   const [outputsReady, setOutputsReady] = useState(false);
   const selected = useRef({ output: DEFAULT_AUDIO_OUTPUT as AudioOutputDevice, channel: "stereo" as AudioOutputChannel });
+  const devicePairs = useRef(new Map<string, AudioOutputChannel>());
 
   const refreshAudioOutputs = useCallback(async () => {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) return;
@@ -57,6 +58,8 @@ export function useAudioOutputs({ getEngine, statusRunning }: UseAudioOutputsPar
         output = readAudioOutputPreference(window.localStorage);
         channel = readAudioOutputChannelPreference(window.localStorage);
       } catch { /* Storage may be disabled. */ }
+      if (!output.deviceId) channel = "stereo";
+      devicePairs.current.set(output.deviceId, channel);
       selected.current = { output, channel };
       setOutput(output);
       setOutputChannel(channel);
@@ -76,6 +79,8 @@ export function useAudioOutputs({ getEngine, statusRunning }: UseAudioOutputsPar
   }, [refreshAudioOutputs]);
 
   const apply = (output: AudioOutputDevice, channel: AudioOutputChannel) => {
+    if (!output.deviceId) channel = "stereo";
+    devicePairs.current.set(output.deviceId, channel);
     selected.current = { output, channel };
     setOutput(output);
     setOutputChannel(channel);
@@ -96,7 +101,7 @@ export function useAudioOutputs({ getEngine, statusRunning }: UseAudioOutputsPar
     updateOutputDevice: (deviceId: string) => apply(
       audioOutputs.find((device) => device.deviceId === deviceId) ??
         (deviceId ? { deviceId, label: selected.current.output.label } : DEFAULT_AUDIO_OUTPUT),
-      selected.current.channel,
+      devicePairs.current.get(deviceId) ?? "stereo",
     ),
     updateOutputChannel: (channel: AudioOutputChannel) => apply(selected.current.output, channel),
     retryOutput: () => {
