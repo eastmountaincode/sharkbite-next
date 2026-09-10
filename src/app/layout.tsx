@@ -15,7 +15,7 @@ const botch = localFont({
   variable: "--font-botch",
 });
 
-const metadataTitle = "Internet Delay Pedal";
+const metadataTitle = "Sharkbite";
 const metadataDescription = "A website that turns the internet into a delay pedal.";
 
 export const metadata: Metadata = {
