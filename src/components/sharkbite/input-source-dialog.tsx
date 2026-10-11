@@ -8,6 +8,7 @@ type InputSourceDialogProps = {
   closeButtonRef: RefObject<HTMLButtonElement | null>;
   defaultInputDeviceId: string;
   inputDeviceId: string;
+  inputLabel: string;
   onClose: () => void;
   onUpdateInputDevice: (deviceId: string) => void;
 };
@@ -17,6 +18,7 @@ export function InputSourceDialog({
   closeButtonRef,
   defaultInputDeviceId,
   inputDeviceId,
+  inputLabel,
   onClose,
   onUpdateInputDevice,
 }: InputSourceDialogProps) {
@@ -49,6 +51,9 @@ export function InputSourceDialog({
             <span className={styles.srOnly}>Input Source</span>
             <select value={inputDeviceId} onChange={(event) => onUpdateInputDevice(event.target.value)}>
               <option value={defaultInputDeviceId}>System Default</option>
+              {inputDeviceId && !audioInputs.some((device) => device.deviceId === inputDeviceId) && (
+                  <option value={inputDeviceId}>{inputLabel} (saved)</option>
+              )}
               {audioInputs.map((device) => (
                 <option key={device.deviceId} value={device.deviceId}>
                   {device.label}

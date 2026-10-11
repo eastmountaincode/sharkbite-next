@@ -100,7 +100,7 @@ export function SharkbiteApp() {
         updateSynthWave,
     } = useSynthController({ engineRef, getEngine });
 
-    const { audioInputs, inputDeviceId, refreshAudioInputs, updateInputDevice } = useAudioInputs({
+    const { audioInputs, inputDeviceId, inputLabel, inputsReady, refreshAudioInputs, updateInputDevice } = useAudioInputs({
         getEngine,
         statusRunning: status.running,
     });
@@ -200,7 +200,7 @@ export function SharkbiteApp() {
     }, [getEngine, inputDeviceId, inputLevel, outputDeviceId, outputChannel, refreshAudioInputs, refreshAudioOutputs, synthWave, wetDry]);
 
     const startFromSplash = async () => {
-        if (startingAudio) return;
+        if (startingAudio || !inputsReady || !outputsReady) return;
 
         setStartingAudio(true);
         try {
@@ -372,6 +372,7 @@ export function SharkbiteApp() {
                     closeButtonRef={inputDialogCloseRef}
                     defaultInputDeviceId={DEFAULT_INPUT_DEVICE_ID}
                     inputDeviceId={inputDeviceId}
+                    inputLabel={inputLabel}
                     onClose={() => setInputDialogOpen(false)}
                     onUpdateInputDevice={updateInputDevice}
                 />
@@ -398,7 +399,7 @@ export function SharkbiteApp() {
                 <MoreInfoDialog closeButtonRef={infoDialogCloseRef} onClose={() => setInfoDialogOpen(false)} />
             ) : null}
 
-            {startScreenVisible ? <StartScreen startingAudio={startingAudio || !outputsReady} onStart={() => void startFromSplash()} /> : null}
+            {startScreenVisible ? <StartScreen startingAudio={startingAudio || !inputsReady || !outputsReady} onStart={() => void startFromSplash()} /> : null}
         </main>
     );
 }
