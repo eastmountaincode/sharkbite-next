@@ -9,8 +9,20 @@ const CONNECT_TIMEOUT_MS = 8000;
 const WATCHDOG_MS = 250;
 const MAX_RETRY_MS = 10000;
 
+export type TapSocket = {
+  readonly readyState: number;
+  readonly bufferedAmount: number;
+  binaryType: BinaryType;
+  onopen: ((event: Event) => unknown) | null;
+  onmessage: ((event: MessageEvent) => unknown) | null;
+  onclose: ((event: CloseEvent) => unknown) | null;
+  onerror: ((event: Event) => unknown) | null;
+  send(data: ArrayBuffer): void;
+  close(): void;
+};
+
 export class RealtimeTapConnection {
-  private socket: WebSocket | null = null;
+  private socket: TapSocket | null = null;
   private readonly urls: readonly string[];
   private route = 0;
   private state: TapConnectionState = "disconnected";
@@ -28,6 +40,8 @@ export class RealtimeTapConnection {
     urls: string | readonly string[],
     private readonly onFrame: (data: ArrayBuffer) => void,
     private readonly onState: (state: TapConnectionState) => void,
+    private readonly createSocket: (url: string) => TapSocket = (url) =>
+      new WebSocket(url),
   ) {
     this.urls = typeof urls === "string" ? [urls] : urls;
     if (!this.urls.length) throw new Error("A tap connection needs a URL.");
@@ -90,9 +104,9 @@ export class RealtimeTapConnection {
     this.setState(this.attempt ? "recovering" : "connecting");
     this.connectingAt = performance.now();
     this.lastWallTick = Date.now();
-    let socket: WebSocket;
+    let socket: TapSocket;
     try {
-      socket = new WebSocket(this.urls[this.route % this.urls.length]);
+      socket = this.createSocket(this.urls[this.route % this.urls.length]);
     } catch {
       this.recover();
       return;

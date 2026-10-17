@@ -88,7 +88,11 @@ Those policies caused audible chopping and were removed.
 
 The browser sends every captured frame while its audio context is running.
 The Node relay forwards every frame, including startup audio captured while a
-city connection opens. Per-message deflate is negotiated on the direct browser
+city connection opens. The primary `/stream` transport uses one browser socket
+for all city taps: identical input PCM is uploaded once with each tap header,
+then fanned out by the relay. Different feedback audio remains independent.
+Returned frames are tagged by city and keep their original timing and sequence.
+`/relay` remains compatible with older clients and is used by the fallback route. Per-message deflate is negotiated on the direct browser
 connection to reduce PCM bandwidth losslessly. Decoded audio is byte-for-byte
 unchanged. Compression is not a promise that every kind of input compresses well.
 
@@ -117,7 +121,7 @@ Production client configuration:
 - Fallback: `NEXT_PUBLIC_SHARKBITE_RELAY_FALLBACK_ORIGIN=https://sharkbite-edge-relay.andreweboylan.workers.dev`
 
 The supported relay implementation is Node (`npm start` in `ops/relay-server`).
-`/healthz` reports version 3 and `maxFrameAgeMs: 10000`.
+`/healthz` reports version 4, `maxFrameAgeMs: 10000`, and multiplex packet counts.
 
 Run `npm ci --prefix ops/relay-server` once, then `npm run test:recovery`.
 Continuity tests compare complete waveforms at 44.1, 48, 96 and 192 kHz and check

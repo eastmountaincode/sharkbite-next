@@ -3,6 +3,7 @@ import { createMonoSourceBus } from "./mono-source-bus";
 import type { AudioOutputChannel } from "./audioOutput";
 import { DEFAULT_TAP_SETTINGS, type FrameSizeMs, type TapConfig, type TapId } from "@/config/taps";
 import { buildTapSocketUrls } from "@/lib/audio/connection-url";
+import { createTapSocket } from "./multiplex-socket";
 import { RealtimeTapConnection, type TapConnectionState } from "./realtime-tap-connection";
 import { packFrame, unpackFrame } from "@/lib/audio/frame-codec";
 import { clearTapSignalFrame, writeTapSignalFrame } from "@/lib/audio/tap-signal-store";
@@ -523,7 +524,7 @@ export class AudioEngine {
         clearTapSignalFrame(tap.id);
       }
       this.emitTapMetrics(tap);
-    });
+    }, createTapSocket);
     tap.connection.start();
   }
 

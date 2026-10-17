@@ -1,4 +1,5 @@
 import http from "node:http";
+import { createMultiplexRelay } from "./multiplex-relay.mjs";
 import { WebSocket, WebSocketServer } from "ws";
 
 const PORT = Number(process.env.PORT || 8082);
@@ -29,7 +30,8 @@ const server = http.createServer((req, res) => {
     res.end(
       JSON.stringify({
         ok: true,
-        version: 3,
+        version: 4,
+        multiplex: upgradeStream.stats,
         maxFrameAgeMs: MAX_FRAME_AGE_MS,
         taps: [...TAP_IPS],
       }),
@@ -40,6 +42,12 @@ const server = http.createServer((req, res) => {
   res.writeHead(404, { "content-type": "text/plain" });
   res.end("not found");
 });
+
+const upgradeStream = createMultiplexRelay(
+  [...TAP_IPS],
+  TAP_WS_PORT,
+  MAX_FRAME_AGE_MS,
+);
 
 const wss = new WebSocketServer({
   noServer: true,
@@ -55,6 +63,10 @@ server.on("upgrade", (req, socket, head) => {
   );
   const ip = url.searchParams.get("ip") || "";
 
+  if (url.pathname === "/stream") {
+    upgradeStream(req, socket, head);
+    return;
+  }
   if (url.pathname !== "/relay" || !TAP_IPS.has(ip)) {
     socket.write("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
     socket.destroy();
