@@ -41,3 +41,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Independently deployed relay dependencies and build output
+/ops/**/node_modules/
+/ops/**/.cloudflare/
+/ops/**/dist/
+.env*.local

@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch server.ts",
-    "start": "bun server.ts",
+    "dev": "node --watch node-server.mjs",
+    "start": "node node-server.mjs",
     "start:node": "node node-server.mjs"
   },
   "dependencies": {

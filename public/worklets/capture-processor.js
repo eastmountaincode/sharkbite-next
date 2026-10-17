@@ -17,8 +17,9 @@ class SharkbiteCapture extends AudioWorkletProcessor {
     }
 
     while (this.buffer.length >= this.frameLength) {
+      const capturedAt = currentTime + channel.length / sampleRate - this.buffer.length / sampleRate;
       const frame = new Float32Array(this.buffer.splice(0, this.frameLength));
-      this.port.postMessage(frame, [frame.buffer]);
+      this.port.postMessage({ frame, capturedAt }, [frame.buffer]);
     }
 
     return true;

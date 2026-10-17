@@ -11,6 +11,7 @@ export type TapSettings = {
 
 export type TapMetrics = {
   connected: boolean;
+  connectionState?: import("./realtime-tap-connection").TapConnectionState;
   rttMs: number | null;
 };
 

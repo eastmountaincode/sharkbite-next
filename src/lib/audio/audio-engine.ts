@@ -2,7 +2,8 @@ import { createAudioOutputRouter } from "./audioOutputRouter";
 import { createMonoSourceBus } from "./mono-source-bus";
 import type { AudioOutputChannel } from "./audioOutput";
 import { DEFAULT_TAP_SETTINGS, type FrameSizeMs, type TapConfig, type TapId } from "@/config/taps";
-import { buildTapSocketUrl } from "@/lib/audio/connection-url";
+import { buildTapSocketUrls } from "@/lib/audio/connection-url";
+import { RealtimeTapConnection, type TapConnectionState } from "./realtime-tap-connection";
 import { packFrame, unpackFrame } from "@/lib/audio/frame-codec";
 import { clearTapSignalFrame, writeTapSignalFrame } from "@/lib/audio/tap-signal-store";
 import type { BufferMode, EngineStatus, TapMetricsUpdate, TapRuntimeSettings } from "@/lib/audio/types";
@@ -17,7 +18,8 @@ const DRY_WET_HALF_PI = Math.PI / 2;
 type TapRuntime = TapConfig & {
   enabled: boolean;
   connected: boolean;
-  ws: WebSocket | null;
+  connection: RealtimeTapConnection | null;
+  connectionState: TapConnectionState;
   player: AudioWorkletNode | null;
   gain: GainNode | null;
   panner: StereoPannerNode | null;
@@ -107,7 +109,8 @@ export class AudioEngine {
         ...tap,
         enabled: false,
         connected: false,
-        ws: null,
+        connection: null,
+        connectionState: "disconnected",
         player: null,
         gain: null,
         panner: null,
@@ -151,8 +154,8 @@ export class AudioEngine {
     this.frameLength = Math.round(this.ctx.sampleRate * this.frameMs / 1000);
 
     await Promise.all([
-      this.ctx.audioWorklet.addModule("/worklets/capture-processor.js"),
-      this.ctx.audioWorklet.addModule("/worklets/player-processor.js"),
+      this.ctx.audioWorklet.addModule("/worklets/capture-processor.js?v=2"),
+      this.ctx.audioWorklet.addModule("/worklets/player-processor.js?v=2"),
     ]);
 
     this.dryGain = this.ctx.createGain();
@@ -173,8 +176,11 @@ export class AudioEngine {
     this.masterLimiter.release.value = 0.16;
     this.analyser.fftSize = 512;
     this.captureNode.port.postMessage({ frameLength: this.frameLength });
-    this.captureNode.port.onmessage = (event: MessageEvent<Float32Array>) => {
-      this.sendFrameToEnabledTaps(event.data);
+    this.captureNode.port.onmessage = (event: MessageEvent<{ frame: Float32Array; capturedAt: number }>) => {
+      // A busy or sleeping main thread can receive old worklet messages in a
+      // burst. Do not timestamp them as new audio and send them to the network.
+      if (!this.ctx || this.ctx.state !== "running" || this.ctx.currentTime - event.data.capturedAt > 0.1) return;
+      this.sendFrameToEnabledTaps(event.data.frame);
     };
 
     this.sourceBus.connect(this.dryGain);
@@ -466,8 +472,8 @@ export class AudioEngine {
       return;
     }
 
-    const url = buildTapSocketUrl(tap.ip);
-    if (!url) {
+    const urls = buildTapSocketUrls(tap.ip);
+    if (!urls.length) {
       tap.enabled = false;
       this.onTapEnabledChange(id, false);
       this.setStatus(
@@ -488,45 +494,32 @@ export class AudioEngine {
     tap.panner.connect(this.wetGain);
     this.applyPrebuffer();
 
-    const socket = new WebSocket(url);
-    socket.binaryType = "arraybuffer";
-    tap.ws = socket;
-
-    socket.onopen = () => {
-      tap.connected = true;
-      this.emitTapMetrics(tap);
-    };
-    socket.onclose = () => {
-      tap.connected = false;
-      clearTapSignalFrame(tap.id);
-      this.emitTapMetrics(tap);
-    };
-    socket.onerror = () => {
-      tap.connected = false;
-      clearTapSignalFrame(tap.id);
-      this.emitTapMetrics(tap);
-    };
-    socket.onmessage = (event) => {
-      if (event.data instanceof ArrayBuffer) {
-        this.handleEcho(id, event.data);
+    tap.connection = new RealtimeTapConnection(urls, (data) => this.handleEcho(id, data), (state) => {
+      tap.connectionState = state;
+      tap.connected = state === "connected";
+      if (!tap.connected) {
+        tap.player?.port.postMessage({ cmd: "flush" });
+        tap.feedbackFrame = null;
+        tap.rttEwma = null;
+        tap.jitter = 0;
+        tap.lastTransit = null;
+        tap.lastSeqSeen = -1;
+        clearTapSignalFrame(tap.id);
       }
-    };
+      this.emitTapMetrics(tap);
+    });
+    tap.connection.start();
   }
 
   private disconnectTap(id: TapId) {
     const tap = this.taps.get(id);
     if (!tap) return;
 
-    if (tap.ws) {
-      try {
-        tap.ws.close();
-      } catch {
-        // Closing a dead socket is harmless.
-      }
-    }
-
-    tap.ws = null;
+    tap.connection?.stop();
+    tap.connection = null;
     tap.connected = false;
+    tap.connectionState = "disconnected";
+    tap.rttEwma = null;
 
     try {
       tap.player?.port.postMessage({ cmd: "flush" });
@@ -547,7 +540,7 @@ export class AudioEngine {
 
   private sendFrameToEnabledTaps(frame: Float32Array) {
     for (const tap of this.taps.values()) {
-      if (!tap.enabled || !tap.ws || tap.ws.readyState !== WebSocket.OPEN) continue;
+      if (!tap.enabled || !tap.connection || !this.ctx) continue;
 
       let outgoing = frame;
       if (tap.feedback > 0 && tap.feedbackFrame && tap.feedbackFrame.length === frame.length) {
@@ -558,13 +551,10 @@ export class AudioEngine {
         tap.feedbackFrame = null;
       }
 
-      try {
-        tap.ws.send(packFrame(tap.seq, outgoing));
-        tap.seq += 1;
+      if (tap.connection.send(packFrame(tap.seq, outgoing), this.ctx.sampleRate)) {
         tap.sent += 1;
-      } catch {
-        // A closed socket will be reflected by its close/error handlers.
       }
+      tap.seq += 1;
     }
   }
 
@@ -592,7 +582,7 @@ export class AudioEngine {
 
     if (tap.player) {
       const playbackFrame = new Float32Array(frame);
-      tap.player.port.postMessage({ frame: playbackFrame }, [playbackFrame.buffer]);
+      tap.player.port.postMessage({ frame: playbackFrame, receivedAt: this.ctx?.currentTime }, [playbackFrame.buffer]);
     }
     if (tap.feedback > 0) tap.feedbackFrame = frame;
   }
@@ -636,6 +626,7 @@ export class AudioEngine {
   private emitTapMetrics(tap: TapRuntime) {
     this.onTapMetrics(tap.id, {
       connected: tap.connected,
+      connectionState: tap.connectionState,
       rttMs: tap.rttEwma,
     });
   }

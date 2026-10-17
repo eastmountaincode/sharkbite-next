@@ -326,7 +326,9 @@ export function PedalSurface({
             const tapEnabled = enabledTaps[tap.id];
             const tapButtonSide = TAP_BUTTON_SIDE[tap.id];
             const capGeometry = tapButtonCapGeometry[tapButtonSide];
-            const delayLabel = tapEnabled ? formatDelay(tapMetrics[tap.id].rttMs) : "--";
+            const metrics = tapMetrics[tap.id];
+            const delayLabel = !tapEnabled ? "--" : metrics.connectionState === "recovering" ? "Retrying" :
+              metrics.connectionState === "connecting" ? "…" : formatDelay(metrics.rttMs);
             const tapButtonStyle = {
               "--control-x": `${layout.x}%`,
               "--control-y": `${layout.y}%`,

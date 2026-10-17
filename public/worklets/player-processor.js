@@ -1,7 +1,7 @@
 class SharkbitePlayer extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.ring = new Float32Array(48000 * 2);
+    this.ring = new Float32Array(Math.ceil(sampleRate * 0.5));
     this.read = 0;
     this.write = 0;
     this.size = 0;
@@ -27,6 +27,14 @@ class SharkbitePlayer extends AudioWorkletProcessor {
 
       const frame = data.frame;
       if (!frame) return;
+      if (Number.isFinite(data.receivedAt) && currentTime - data.receivedAt > 0.1) return;
+      // Bursts after a stall must not turn into a second long playback queue.
+      const target = Math.min(this.capacity, this.prebuffer + frame.length);
+      if (this.size + frame.length > this.prebuffer + sampleRate * 0.1) {
+        const discard = Math.max(0, this.size + frame.length - target);
+        this.read = (this.read + discard) % this.capacity;
+        this.size = Math.max(0, this.size - discard);
+      }
 
       for (let index = 0; index < frame.length; index += 1) {
         this.ring[this.write] = frame[index];
