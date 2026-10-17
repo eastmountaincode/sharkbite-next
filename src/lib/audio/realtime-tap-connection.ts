@@ -3,8 +3,8 @@ export type TapConnectionState =
 
 // Network delay is the effect; unbounded queued audio is not. Keep enough room
 // for intercontinental RTT without allowing a broken route to accumulate audio.
-export const MAX_FRAME_AGE_MS = 1500;
-export const MAX_SEND_QUEUE_MS = 100;
+export const MAX_FRAME_AGE_MS = 10000;
+export const MAX_SEND_QUEUE_MS = 5000;
 const CONNECT_TIMEOUT_MS = 8000;
 const WATCHDOG_MS = 250;
 const MAX_RETRY_MS = 10000;
@@ -19,7 +19,6 @@ export class RealtimeTapConnection {
   private watchdog: ReturnType<typeof setInterval> | null = null;
   private pending = new Map<number, number>();
   private attempt = 0;
-  private minRttMs: number | null = null;
   private openedAt = 0;
   private connectingAt = 0;
   private lastTick = 0;
@@ -61,23 +60,15 @@ export class RealtimeTapConnection {
       this.recover();
       return false;
     }
-    // Brief congestion should drop a new frame, not repeatedly tear down an
-    // otherwise usable intercontinental connection. The watchdog still resets
-    // any pending frame that actually exceeds the age budget.
+    // Never punch holes in continuous audio to meet a latency target. Only
+    // reset the whole connection if seconds of unsent audio make it unusable.
     if (
       socket.bufferedAmount + data.byteLength >
       (sampleRate * 2 * MAX_SEND_QUEUE_MS) / 1000
-    )
+    ) {
+      this.recover();
       return false;
-    // Bound bytes already handed to TCP as well as WebSocket.bufferedAmount.
-    // The window follows the measured route RTT plus 100 ms of headroom. When
-    // bandwidth falls, omit new audio instead of filling a hidden TCP backlog.
-    const frameMs = ((data.byteLength - 12) / 2 / sampleRate) * 1000;
-    const maxPending = Math.max(
-      1,
-      Math.ceil(((this.minRttMs ?? 250) + MAX_SEND_QUEUE_MS) / frameMs),
-    );
-    if (this.pending.size >= maxPending) return false;
+    }
     try {
       const view = new DataView(data);
       socket.send(data);
@@ -87,6 +78,10 @@ export class RealtimeTapConnection {
       this.recover();
       return false;
     }
+  }
+
+  restart() {
+    if (this.active) this.recover();
   }
 
   private open() {
@@ -135,8 +130,6 @@ export class RealtimeTapConnection {
         this.recover();
         return;
       }
-      this.minRttMs =
-        this.minRttMs === null ? age : Math.min(this.minRttMs, age);
       // WebSocket echoes are ordered. A later echo also retires earlier
       // frames deliberately dropped during relay startup or congestion.
       for (const pendingSeq of this.pending.keys()) {
@@ -192,7 +185,6 @@ export class RealtimeTapConnection {
     const socket = this.socket;
     this.socket = null;
     this.pending.clear();
-    this.minRttMs = null;
     if (socket) {
       socket.onopen = socket.onmessage = socket.onclose = null;
       socket.onerror = () => {};

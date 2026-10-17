@@ -69,11 +69,11 @@ try {
     new Promise((_, reject) =>
       setTimeout(
         () => reject(Error("relay did not expire stalled audio")),
-        3000,
+        12000,
       ),
     ),
   ]);
-  assert.ok(Date.now() - start < 2200);
+  assert.ok(Date.now() - start < 11000);
   console.log(
     "PASS stalled upstream is terminated before stale audio can accumulate",
   );
@@ -87,15 +87,26 @@ try {
   console.log("PASS independent connection recovers after a stalled session");
   startupDelay = 250;
   ws = await connect();
-  const startup = once(ws, "message");
-  let newest;
+  const received = [];
+  const expected = [];
+  const complete = new Promise((resolve) =>
+    ws.on("message", (data) => {
+      received.push(data);
+      if (received.length === 20) resolve();
+    }),
+  );
   for (let i = 4; i < 24; i++) {
-    newest = frame(i);
-    ws.send(newest);
+    const b = frame(i);
+    expected.push(b);
+    ws.send(b);
   }
-  assert.deepEqual((await startup)[0], newest);
+  await complete;
+  assert.deepEqual(received, expected);
+  assert.ok(ws.extensions.includes("permessage-deflate"));
   ws.terminate();
-  console.log("PASS slow startup keeps only the latest audio frame");
+  console.log(
+    "PASS compressed slow-start stream preserves every audio frame in order",
+  );
   startupDelay = 0;
   ws = await connect();
   const invalid = once(ws, "close");

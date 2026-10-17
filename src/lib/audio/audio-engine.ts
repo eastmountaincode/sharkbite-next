@@ -20,6 +20,7 @@ type TapRuntime = TapConfig & {
   connected: boolean;
   connection: RealtimeTapConnection | null;
   connectionState: TapConnectionState;
+  flushTimer: number | null;
   player: AudioWorkletNode | null;
   gain: GainNode | null;
   panner: StereoPannerNode | null;
@@ -111,6 +112,7 @@ export class AudioEngine {
         connected: false,
         connection: null,
         connectionState: "disconnected",
+        flushTimer: null,
         player: null,
         gain: null,
         panner: null,
@@ -154,8 +156,8 @@ export class AudioEngine {
     this.frameLength = Math.round(this.ctx.sampleRate * this.frameMs / 1000);
 
     await Promise.all([
-      this.ctx.audioWorklet.addModule("/worklets/capture-processor.js?v=2"),
-      this.ctx.audioWorklet.addModule("/worklets/player-processor.js?v=2"),
+      this.ctx.audioWorklet.addModule("/worklets/capture-processor.js?v=3"),
+      this.ctx.audioWorklet.addModule("/worklets/player-processor.js?v=3"),
     ]);
 
     this.dryGain = this.ctx.createGain();
@@ -177,9 +179,8 @@ export class AudioEngine {
     this.analyser.fftSize = 512;
     this.captureNode.port.postMessage({ frameLength: this.frameLength });
     this.captureNode.port.onmessage = (event: MessageEvent<{ frame: Float32Array; capturedAt: number }>) => {
-      // A busy or sleeping main thread can receive old worklet messages in a
-      // burst. Do not timestamp them as new audio and send them to the network.
-      if (!this.ctx || this.ctx.state !== "running" || this.ctx.currentTime - event.data.capturedAt > 0.1) return;
+      // A main-thread scheduling burst must not delete parts of the input.
+      if (!this.ctx || this.ctx.state !== "running") return;
       this.sendFrameToEnabledTaps(event.data.frame);
     };
 
@@ -489,6 +490,9 @@ export class AudioEngine {
     tap.panner = this.ctx.createStereoPanner();
     tap.gain.gain.value = tap.returnLevel;
     tap.panner.pan.value = tap.pan;
+    tap.player.port.onmessage = (event) => {
+      if (event.data?.cmd === "overflow") tap.connection?.restart();
+    };
     tap.player.connect(tap.gain);
     tap.gain.connect(tap.panner);
     tap.panner.connect(this.wetGain);
@@ -497,8 +501,20 @@ export class AudioEngine {
     tap.connection = new RealtimeTapConnection(urls, (data) => this.handleEcho(id, data), (state) => {
       tap.connectionState = state;
       tap.connected = state === "connected";
+      if (tap.flushTimer !== null) window.clearTimeout(tap.flushTimer);
+      tap.flushTimer = null;
+      if (tap.gain && this.ctx) {
+        const now = this.ctx.currentTime;
+        tap.gain.gain.cancelScheduledValues(now);
+        tap.gain.gain.setValueAtTime(tap.gain.gain.value, now);
+        tap.gain.gain.linearRampToValueAtTime(tap.connected ? tap.returnLevel : 0, now + 0.02);
+      }
       if (!tap.connected) {
-        tap.player?.port.postMessage({ cmd: "flush" });
+        // Finish a short fade before clearing a failed session's audio.
+        tap.flushTimer = window.setTimeout(() => {
+          tap.player?.port.postMessage({ cmd: "flush" });
+          tap.flushTimer = null;
+        }, 30);
         tap.feedbackFrame = null;
         tap.rttEwma = null;
         tap.jitter = 0;
@@ -516,6 +532,8 @@ export class AudioEngine {
     if (!tap) return;
 
     tap.connection?.stop();
+    if (tap.flushTimer !== null) window.clearTimeout(tap.flushTimer);
+    tap.flushTimer = null;
     tap.connection = null;
     tap.connected = false;
     tap.connectionState = "disconnected";

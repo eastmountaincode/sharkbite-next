@@ -128,34 +128,32 @@ test("healthy echo retains real network delay", () => {
   r.conn.stop();
   assert.equal(r.timers.size, 0);
 });
-test("send congestion drops new frames without filling the queue; persistent stalls recover", () => {
+test("ordinary send congestion preserves every frame", () => {
   const r = rig();
   r.conn.start();
   r.sockets[0].open();
-  assert.equal(r.conn.send(r.packet(), 48000), true);
-  r.sockets[0].bufferedAmount = 9600;
-  assert.equal(r.conn.send(r.packet(1), 48000), false);
-  assert.equal(r.sockets[0].readyState, 1);
-  assert.equal(r.sockets[0].sent.length, 1);
-  r.advance(1750);
-  assert.equal(r.sockets[0].readyState, 3);
-  assert.equal(r.states.at(-1), "recovering");
-  r.advance(500);
-  assert.equal(r.sockets.length, 2);
+  r.sockets[0].bufferedAmount = 48000;
+  const sent = [];
+  for (let i = 0; i < 100; i++) {
+    const b = r.packet(i);
+    sent.push(b);
+    assert.equal(r.conn.send(b, 48000), true);
+    r.advance(20);
+  }
+  r.advance(300);
+  for (const b of sent) r.sockets[0].echo(b);
+  assert.equal(r.sockets[0].sent.length, 100);
+  assert.deepEqual(r.frames, sent);
+  assert.equal(r.states.at(-1), "connected");
   r.conn.stop();
 });
-test("in-flight window bounds hidden TCP queues and follows the route RTT", () => {
+test("only a multi-second unsent backlog resets the session", () => {
   const r = rig();
   r.conn.start();
   r.sockets[0].open();
-  for (let i = 0; i < 1000; i++) r.conn.send(r.packet(i), 48000);
-  assert.ok(r.sockets[0].sent.length <= 18);
-  const latest = r.sockets[0].sent.at(-1);
-  r.advance(40);
-  r.sockets[0].echo(latest);
-  const before = r.sockets[0].sent.length;
-  for (let i = 1000; i < 2000; i++) r.conn.send(r.packet(i), 48000);
-  assert.ok(r.sockets[0].sent.length - before <= 8);
+  r.sockets[0].bufferedAmount = 48000 * 2 * 5;
+  assert.equal(r.conn.send(r.packet(), 48000), false);
+  assert.equal(r.states.at(-1), "recovering");
   r.conn.stop();
 });
 test("silent connection expires without waiting for another frame", () => {
@@ -163,7 +161,7 @@ test("silent connection expires without waiting for another frame", () => {
   r.conn.start();
   r.sockets[0].open();
   r.conn.send(r.packet(), 48000);
-  r.advance(1750);
+  r.advance(10250);
   assert.equal(r.sockets[0].readyState, 3);
   assert.equal(r.frames.length, 0);
   r.conn.stop();
@@ -302,23 +300,48 @@ function processor(name, rate = 48000) {
   return { p: new Class(), state };
 }
 for (const rate of [44100, 48000, 96000, 192000])
-  test("playback burst stays bounded at " + rate + " Hz", () => {
-    const { p } = processor("player", rate);
-    p.port.onmessage({ data: { cmd: "prebuffer", value: rate * 0.05 } });
-    for (let i = 0; i < 500; i++)
+  test(
+    "continuous waveform survives a 400ms return burst intact at " +
+      rate +
+      " Hz",
+    () => {
+      const { p, state } = processor("player", rate);
+      state.time = 1;
       p.port.onmessage({
-        data: { frame: new Float32Array(rate * 0.02).fill(i) },
+        data: { cmd: "prebuffer", value: Math.round(rate * 0.05) },
       });
-    assert.ok(p.size <= rate * 0.15);
-    p.port.onmessage({ data: { cmd: "flush" } });
-    assert.equal(p.size, 0);
-    assert.equal(p.playing, false);
-  });
-test("worklet discards messages delayed on the audio thread", () => {
-  const { p, state } = processor("player");
-  state.time = 10;
-  p.port.onmessage({ data: { frame: new Float32Array(960), receivedAt: 1 } });
+      const frameLength = Math.round(rate * 0.02),
+        expected = new Float32Array(frameLength * 20);
+      for (let i = 0; i < expected.length; i++)
+        expected[i] = 0.4 * Math.sin((2 * Math.PI * 997 * i) / rate);
+      for (let i = 0; i < 20; i++) {
+        const frame = expected.slice(i * frameLength, (i + 1) * frameLength);
+        p.port.onmessage({ data: { frame, receivedAt: 0.6 } });
+      }
+      assert.equal(p.size, expected.length);
+      const actual = new Float32Array(Math.ceil(expected.length / 128) * 128);
+      for (let offset = 0; offset < actual.length; offset += 128) {
+        const block = new Float32Array(128);
+        p.process([], [[block]]);
+        actual.set(block, offset);
+        state.time += 128 / rate;
+      }
+      assert.deepEqual(actual.slice(0, expected.length), expected);
+      assert.equal(p.size, 0);
+    },
+  );
+test("a genuinely full playback queue reports failure instead of silently splicing audio", () => {
+  const { p } = processor("player");
+  const messages = [];
+  p.port.postMessage = (m) => messages.push(m);
+  p.port.onmessage({ data: { frame: new Float32Array(p.capacity) } });
+  p.port.onmessage({ data: { frame: new Float32Array(960) } });
+  assert.equal(p.size, p.capacity);
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].cmd, "overflow");
+  p.port.onmessage({ data: { cmd: "flush" } });
   assert.equal(p.size, 0);
+  assert.equal(p.overflow, false);
 });
 test("capture preserves the age of the original audio", () => {
   const { p, state } = processor("capture");

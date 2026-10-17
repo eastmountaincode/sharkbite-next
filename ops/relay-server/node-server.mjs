@@ -4,9 +4,9 @@ import { WebSocket, WebSocketServer } from "ws";
 const PORT = Number(process.env.PORT || 8082);
 const HOST = process.env.HOST || "127.0.0.1";
 const TAP_WS_PORT = Number(process.env.TAP_WS_PORT || 8081);
-const MAX_FRAME_AGE_MS = 1500;
-const MAX_QUEUE_FRAMES = 5;
-const MAX_PENDING_FRAMES = 128;
+const MAX_FRAME_AGE_MS = 10000;
+const MAX_SEND_BUFFER_BYTES = 4 * 1024 * 1024;
+const MAX_PENDING_FRAMES = 4096;
 const CONNECT_TIMEOUT_MS = 8000;
 const TAP_IPS = new Set(
   (
@@ -29,7 +29,7 @@ const server = http.createServer((req, res) => {
     res.end(
       JSON.stringify({
         ok: true,
-        version: 2,
+        version: 3,
         maxFrameAgeMs: MAX_FRAME_AGE_MS,
         taps: [...TAP_IPS],
       }),
@@ -44,7 +44,8 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({
   noServer: true,
   maxPayload: 64 * 1024,
-  perMessageDeflate: false,
+  // Lossless compression reduces PCM bandwidth without omitting audio frames.
+  perMessageDeflate: { threshold: 256, zlibDeflateOptions: { level: 1 } },
 });
 
 server.on("upgrade", (req, socket, head) => {
@@ -71,13 +72,13 @@ wss.on("connection", (client, _req, ip) => {
   });
   const pending = new Map();
   let stopped = false;
-  let startupFrame = null;
+  const startupFrames = [];
   const stop = (reason) => {
     if (stopped) return;
     stopped = true;
     clearInterval(watchdog);
     pending.clear();
-    startupFrame = null;
+    startupFrames.length = 0;
     console.log(JSON.stringify({ event: "tap_closed", tap: ip, reason }));
     // terminate discards unsent audio; a graceful close would drain the backlog.
     client.terminate();
@@ -91,10 +92,8 @@ wss.on("connection", (client, _req, ip) => {
 
   const forward = (target, data) => {
     if (target.readyState !== WebSocket.OPEN) return false;
-    if (
-      target.bufferedAmount + data.byteLength >
-      data.byteLength * MAX_QUEUE_FRAMES
-    ) {
+    if (target.bufferedAmount + data.byteLength > MAX_SEND_BUFFER_BYTES) {
+      stop("unusable_send_backlog");
       return false;
     }
     target.send(data, { binary: true }, (error) => {
@@ -104,11 +103,16 @@ wss.on("connection", (client, _req, ip) => {
   };
 
   upstream.on("open", () => {
-    const frame = startupFrame;
-    startupFrame = null;
-    if (!frame || Date.now() - frame.receivedAt > MAX_FRAME_AGE_MS) return;
-    pending.set(frame.data.readUInt32LE(0), Date.now());
-    forward(upstream, frame.data);
+    for (const frame of startupFrames) {
+      if (stopped) break;
+      if (Date.now() - frame.receivedAt > MAX_FRAME_AGE_MS) {
+        stop("startup_timeout");
+        break;
+      }
+      pending.set(frame.data.readUInt32LE(0), frame.receivedAt);
+      forward(upstream, frame.data);
+    }
+    startupFrames.length = 0;
   });
 
   upstream.on("message", (data, isBinary) => {
@@ -134,9 +138,10 @@ wss.on("connection", (client, _req, ip) => {
       stop("invalid_frame");
       return;
     }
-    // Retain only the newest startup frame; never replay a startup backlog.
+    // Keep startup audio in order while the city handshake completes.
     if (upstream.readyState !== WebSocket.OPEN) {
-      startupFrame = { data, receivedAt: Date.now() };
+      if (startupFrames.length >= MAX_PENDING_FRAMES) stop("startup_backlog");
+      else startupFrames.push({ data, receivedAt: Date.now() });
       return;
     }
     if (pending.size >= MAX_PENDING_FRAMES) {

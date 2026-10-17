@@ -79,51 +79,50 @@ NEXT_PUBLIC_SHARKBITE_RELAY_ORIGIN=https://relay.example.com
 The relay should remain allowlisted to the four tap IPs. Do not make it a generic open WebSocket proxy.
 
 
-## Bounded real-time transport (October 2026)
+## Continuous audio transport (October 2026)
 
-The browser transport (`realtime-tap-connection.ts`) caps unsent audio at 100 ms
-and expires outstanding frames after 1,500 ms. An in-flight window also limits
-audio already handed to TCP to the measured route RTT plus 100 ms, so reduced
-bandwidth drops new frames rather than feeding a hidden network backlog. That budget leaves room for
-intercontinental RTT; it is a failure ceiling, not an added musical delay.
-A 250 ms watchdog catches silent connections and event-loop/sleep gaps. Failed
-connections clear playback and feedback, reject callbacks from old sockets, and
-retry with backoff (0.5–10 seconds). When a fallback origin is configured,
-retries alternate network routes. The UI shows `Retrying` until a fresh echo
-proves the path works. Disabling a tap cancels its retries.
+The audio stream must preserve every sample in order during normal network
+jitter. Do not enforce short delay targets by skipping outgoing frames,
+trimming returning sample bursts, or rejecting worklet messages after 100 ms.
+Those policies caused audible chopping and were removed.
 
-Capture messages carry the original audio-clock timestamp so messages queued on
-a busy main thread cannot be sent as fresh audio. The player drops audio-thread
-messages older than 100 ms and trims bursts to a small bounded playout queue.
-The normal jitter prebuffer remains 50 ms.
+The browser sends every captured frame while its audio context is running.
+The Node relay forwards every frame, including startup audio captured while a
+city connection opens. Per-message deflate is negotiated on the direct browser
+connection to reduce PCM bandwidth losslessly. Decoded audio is byte-for-byte
+unchanged. Compression is not a promise that every kind of input compresses well.
 
-The Node relay is the supported production implementation (`npm start` in
-`ops/relay-server`). It retains only the newest startup frame while upstream is connecting,
-limits each socket's unsent queue to five frames (dropping excess new frames), and terminates stalled
-sessions after 1,500 ms instead of draining obsolete audio. `/healthz` reports
-`version: 2` and `maxFrameAgeMs: 1500`. The old Bun example is not the production
-entrypoint.
+The player buffers ordinary bursts without cutting samples out. Its four-second
+capacity is a failure boundary: overflow reports a failed session instead of
+silently splicing the waveform. The initial jitter prebuffer remains 50 ms.
 
-`ops/edge-relay` adds an independent client-to-NYC route via Cloudflare. Its
-runtime splices the upgraded WebSocket without a JavaScript audio queue. The
-only allowed upstream is the existing NYC relay and its four allowlisted taps.
-It does not replace the city echo servers. Deploy with `npm run deploy` in that
-directory (requires Node 22.18+ and the pinned `cf` CLI); the small build script
-emits cf's validated Build Output Specification without a bundler. Logs and
-traces are enabled. The account is explicitly pinned in `cloudflare.config.ts`.
+A dead session or extreme backlog still recovers: the browser resets after five
+seconds of unsent audio or ten-second-old outstanding frames; the relay expires
+outstanding frames after ten seconds and caps unsent data at 4 MiB. These are
+failure limits, not normal latency targets. Recovery fades the wet return down
+before flushing it, rejects old socket callbacks, then retries with backoff.
+Sleep/wake detection also uses wall time because macOS may pause its performance
+clock. Disabling a tap cancels retries. The UI shows `Retrying` until a fresh echo.
+
+The direct NYC relay is the primary route. A Cloudflare WebSocket passthrough
+provides an alternate client-to-NYC route, restricted to the same four tap IPs.
+It does not replace the city echo servers. Deploy it with `npm run deploy` in
+`ops/edge-relay` (Node 22.18+ and the pinned cf CLI); the build script emits cf's
+validated Build Output Specification. Logs and traces are enabled and the
+account is explicitly pinned in `cloudflare.config.ts`.
 
 Production client configuration:
 
-- Primary: `NEXT_PUBLIC_SHARKBITE_RELAY_ORIGIN=https://sharkbite-edge-relay.andreweboylan.workers.dev`
-- Fallback: `NEXT_PUBLIC_SHARKBITE_RELAY_FALLBACK_ORIGIN=https://relay.sharkbite.andrew-boylan.com`
+- Primary: `NEXT_PUBLIC_SHARKBITE_RELAY_ORIGIN=https://relay.sharkbite.andrew-boylan.com`
+- Fallback: `NEXT_PUBLIC_SHARKBITE_RELAY_FALLBACK_ORIGIN=https://sharkbite-edge-relay.andreweboylan.workers.dev`
 
-Run `npm ci --prefix ops/relay-server` once, then `npm run test:recovery` for
-stall, expiry, reconnection, obsolete callback, fallback route, and worklet
-regressions, plus a real local WebSocket relay failure/recovery test.
-The same checks run on pushes and pull requests in `audio-checks.yml`.
-`npm run test:audio` checks dry/wet output routing separately. These checks do
-not substitute for testing the published browser session and physical audio.
+The supported relay implementation is Node (`npm start` in `ops/relay-server`).
+`/healthz` reports version 3 and `maxFrameAgeMs: 10000`.
 
-To recover an older already-open release, reload once after the update. New
-releases recover their own tap connections. Network outages may still interrupt
-wet audio; they must never be replayed as minutes of stale sound.
+Run `npm ci --prefix ops/relay-server` once, then `npm run test:recovery`.
+Continuity tests compare complete waveforms at 44.1, 48, 96 and 192 kHz and check
+that congestion, compression and startup preserve every frame in order.
+Recovery tests cover dead connections, extreme backlog, sleep and stale callbacks.
+`npm run test:audio` checks dry/wet routing separately. All run on pushes and pull
+requests in `audio-checks.yml`. Packet counts and delay readouts alone are not
+sufficient evidence of audio quality; check the actual returned signal.
