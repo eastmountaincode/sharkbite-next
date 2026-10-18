@@ -32,8 +32,8 @@ export function buildTapSocketUrls(ip: string): string[] {
         ),
       ),
     ].map(
-      (origin, index) =>
-        `${wsProtocolFor(origin)}/${index === 0 ? "stream" : "relay"}?ip=${encodeURIComponent(ip)}`,
+      (origin) =>
+        `${wsProtocolFor(origin)}/stream?ip=${encodeURIComponent(ip)}`,
     );
   }
 

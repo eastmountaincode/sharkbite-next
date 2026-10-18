@@ -150,6 +150,11 @@ export class RealtimeTapConnection {
         this.pending.delete(pendingSeq);
         if (pendingSeq === seq) break;
       }
+      // Background windows may delay interval callbacks while WebSocket audio
+      // keeps arriving. Fresh echoes prove the page is awake; the watchdog's
+      // scheduling gap alone must not tear down a healthy performance.
+      this.lastTick = performance.now();
+      this.lastWallTick = Date.now();
       // Reset backoff only after a sustained healthy connection.
       if (performance.now() - this.openedAt > 10000) this.attempt = 0;
       this.setState("connected");

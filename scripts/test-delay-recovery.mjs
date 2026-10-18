@@ -181,6 +181,18 @@ test("later ordered echo retires startup frames dropped by a relay", () => {
   assert.equal(r.states.at(-1), "connected");
   r.conn.stop();
 });
+test("delayed background watchdog cannot reset continuously arriving audio", () => {
+  const r = rig(); r.conn.start(); r.sockets[0].open();
+  for (let seq = 0; seq < 240; seq++) {
+    r.sleep(250); // WebSocket messages run, interval callback is throttled.
+    const frame = r.packet(seq); r.conn.send(frame, 48000); r.sockets[0].echo(frame);
+  }
+  r.conn.check();
+  assert.equal(r.frames.length, 240);
+  assert.equal(r.states.at(-1), "connected");
+  assert.equal(r.sockets.length, 1);
+  r.conn.stop();
+});
 test("minutes-old audio never reaches playback", () => {
   const r = rig();
   r.conn.start();
