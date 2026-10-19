@@ -84,7 +84,7 @@ export const SYNTH_WAVES: OscillatorType[] = ["triangle", "sine", "sawtooth", "s
 export const ENABLE_INPUT_AREA_HELPER =
   process.env.NEXT_PUBLIC_SHARKBITE_ENABLE_HELPER === "true" ||
   (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_SHARKBITE_ENABLE_HELPER !== "false");
-export const BUTTON_PRESS_VOLUME = 0.25;
+export const BUTTON_PRESS_VOLUME = 0.125;
 export const HELPER_PANEL_POSITION_STORAGE_KEY = "sharkbite-helper-panel-position";
 export const HELPER_PANEL_VIEWPORT_MARGIN = 10;
 export const MAX_INPUT_LEVEL = 100;
