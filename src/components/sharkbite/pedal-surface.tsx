@@ -27,6 +27,7 @@ type ControlDragStateSnapshot = {
 type PedalSurfaceProps = {
     children?: React.ReactNode;
     hideTaps?: boolean;
+    showControlValues?: boolean;
   controlDragState: ControlDragStateSnapshot;
   controlLayout: Record<ControlLayoutId, AreaPoint>;
   controlMoveModeActive: boolean;
@@ -81,6 +82,7 @@ const formatDelay = (value: number | null) => {
 export function PedalSurface({
   children,
   hideTaps = false,
+    showControlValues = false,
   controlDragState,
   controlLayout,
   controlMoveModeActive,
@@ -287,6 +289,11 @@ export function PedalSurface({
           <span className={`${styles.jackLabel} ${styles.wetDryLabel}`} style={wetDryKnobStyle}>
             Dry/Wet
           </span>
+            {showControlValues && (
+                <output aria-label="Dry wet mix percentage" className={styles.knobValue} style={wetDryKnobStyle}>
+                    {wetDry}%
+                </output>
+            )}
           <div
             aria-label="Input level"
             aria-valuemax={maxInputLevel}
@@ -317,14 +324,20 @@ export function PedalSurface({
           <span className={`${styles.jackLabel} ${styles.inputLevelLabel}`} style={inputKnobStyle}>
             Input Level
           </span>
-          <span
-            aria-hidden="true"
-            className={styles.inputLevelMeter}
-            data-active={statusRunning ? "true" : "false"}
-            style={inputMeterStyle}
-          >
-            <span className={styles.inputLevelMeterFill} />
-          </span>
+            {showControlValues ? (
+                <output aria-label="Input level percentage" className={styles.knobValue} style={inputKnobStyle}>
+                    {inputLevel}%
+                </output>
+            ) : (
+                <span
+                    aria-hidden="true"
+                    className={styles.inputLevelMeter}
+                    data-active={statusRunning ? "true" : "false"}
+                    style={inputMeterStyle}
+                >
+                    <span className={styles.inputLevelMeterFill} />
+                </span>
+            )}
           {children}
           {!hideTaps && TAPS.map((tap) => {
             const layout = controlLayout[tap.id];

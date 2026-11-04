@@ -1140,15 +1140,16 @@
 }
 .feedbackStop {
     position: absolute;
-    left: 80%;
-    top: 0;
+    left: 65%;
+    top: 3.5cqw;
     transform: translate(-50%, -50%);
     display: grid;
     place-items: center;
     width: clamp(28px, 3.8cqw, 40px);
     aspect-ratio: 1;
     padding: 0;
-    border: 1.5px solid var(--line);
+    border: 0;
+    outline: none;
     background: transparent;
     color: var(--line);
     cursor: pointer;
@@ -1163,20 +1164,27 @@
     aspect-ratio: 1;
     background: currentColor;
 }
-.feedbackStop[aria-pressed="true"] {
-    color: var(--panel);
-    background: var(--line);
+.feedbackStop[aria-pressed="true"]::before {
+    opacity: 0.4;
 }
-.feedbackStop:focus-visible {
-    outline: 2px solid var(--line);
-    outline-offset: 3px;
+.feedbackStop:focus-visible::before {
+    transform: scale(1.15);
 }
+.knobValue,
 .feedbackValue {
     position: absolute;
-    top: 10.6cqw;
-    left: 0;
     transform: translateX(-50%);
     font: clamp(10px, 1.5cqw, 16px)/1.2 Helvetica, sans-serif;
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+}
+.knobValue {
+    top: calc(var(--control-y) + 10.6cqw);
+    left: var(--control-x);
+}
+.feedbackValue {
+    top: 10.6cqw;
+    left: 0;
 }
 .destinationsToggle {
     position: absolute;

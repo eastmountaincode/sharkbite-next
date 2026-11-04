@@ -320,7 +320,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
             <TopControls
                 infoDialogOpen={infoDialogOpen}
                 pianoVisible={pianoVisible}
-                showInfoToggle={!startScreenVisible}
+                showInfoToggle={!startScreenVisible && !mapOpen}
                 onOpenInfo={() => setInfoDialogOpen(true)}
                 onTogglePiano={togglePiano}
             />
@@ -335,6 +335,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                 controlLayout={controlLayout}
                 controlMoveModeActive={controlMoveModeActive}
                 hideTaps={atlas}
+                showControlValues={atlas}
                 enabledTaps={enabledTaps}
                 inputDialogOpen={inputDialogOpen}
                 outputDialogOpen={outputDialogOpen}
