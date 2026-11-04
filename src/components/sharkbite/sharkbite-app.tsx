@@ -9,6 +9,7 @@ import {
 } from "react";
 import { TAPS, type TapId } from "@/config/taps";
 import { AudioEngine } from "@/lib/audio/audio-engine";
+import { FeedbackStopButton } from "./feedback-stop-button";
 import { InputAreaHelperPanel } from "./input-area-helper-panel";
 import { InputSourceDialog } from "./input-source-dialog";
 import { MoreInfoDialog } from "./more-info-dialog";
@@ -50,6 +51,7 @@ import { useSynthController } from "./use-synth-controller";
 export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
     const [selected, setSelected] = useState(new Set(["TYO"]));
     const [feedback, setFeedback] = useState(35);
+    const [feedbackStopped, setFeedbackStopped] = useState(false);
     const [mapOpen, setMapOpen] = useState(false);
     const updateReturns = useRef<ReturnType<typeof createAtlasReturns> | null>(null);
     const feedbackControl = useKnobControl({
@@ -89,8 +91,8 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
     const measurements = useMeasurements(selected, atlas && status.running);
 
     useEffect(() => {
-        if (status.running) updateReturns.current?.(selected, feedback, measurements);
-    }, [status.running, selected, feedback, measurements]);
+        if (status.running) updateReturns.current?.(selected, feedback, measurements, feedbackStopped);
+    }, [status.running, selected, feedback, measurements, feedbackStopped]);
 
     const getEngine = useCallback(() => {
         if (!engineRef.current) {
@@ -376,6 +378,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                         onPointerUp={feedbackControl.stopDrag} onLostPointerCapture={feedbackControl.handleLostPointerCapture}>
                         <span aria-hidden="true" className={styles.knob} />
                     </div>
+                    <FeedbackStopButton disabled={!status.running} pressed={feedbackStopped} onChange={setFeedbackStopped} />
                     <span className={styles.jackLabel}>Feedback</span>
                     <output className={styles.feedbackValue}>{feedback}%</output>
                 </div>}

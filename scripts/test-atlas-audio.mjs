@@ -47,6 +47,41 @@ const decaying = await render(["TYO"], 50, { TYO: { ms: 150, unavailable: false 
 assert(windowPeak(decaying, 0.4) < windowPeak(decaying, 0.25) * 0.6, "Feedback below 100% must decay");
 console.log("PASS: silence without measurements, deselection, decay, and bounded feedback at 150%");
 
+{
+    const ctx = new webAudioEngine.OfflineAudioContext(1, rate * 2, rate);
+    const source = ctx.createGain();
+    const wet = ctx.createGain();
+    wet.connect(ctx.destination);
+    const update = createAtlasReturns(ctx, source, wet);
+    const selected = new Set(["TYO"]);
+    const measurements = { TYO: { ms: 150, unavailable: false } };
+    const feedback = 129;
+    update(selected, feedback, measurements);
+    for (const at of [0.1, 0.7, 1.2]) {
+        const pulse = ctx.createBufferSource();
+        pulse.buffer = ctx.createBuffer(1, 480, rate);
+        pulse.buffer.getChannelData(0).fill(0.1);
+        pulse.connect(source);
+        pulse.start(at);
+    }
+    const press = ctx.suspend(0.45);
+    const rendered = ctx.startRendering();
+    await press;
+    update(selected, feedback, measurements, true);
+    const release = ctx.suspend(1.1);
+    await ctx.resume();
+    await release;
+    update(selected, feedback, measurements, false);
+    await ctx.resume();
+    const audio = (await rendered).getChannelData(0);
+    assert(windowPeak(audio, 0.4) > windowPeak(audio, 0.25) * 1.2, "129% feedback must grow before the stop");
+    assert(peak(audio.slice(0.62 * rate, 0.69 * rate)) < 1e-5, "Holding stop must drain the existing feedback loop");
+    assert(windowPeak(audio, 0.85) > 0.09, "Holding stop must preserve the first echo of new input");
+    assert(windowPeak(audio, 1.0) < 1e-5, "New input must not feed back while stop is held");
+    assert(windowPeak(audio, 1.5) > windowPeak(audio, 1.35) * 1.2, "Release must restore 129% feedback");
+    console.log("PASS: momentary stop drains repeats, preserves the first echo, and restores 129% on release");
+}
+
 const { measureDestination } = await import(encode(compile("measurements").replace('"./destinations"', JSON.stringify(config))));
 const originalFetch = globalThis.fetch;
 const originalPerformance = globalThis.performance;

@@ -26,7 +26,7 @@ export function createAtlasReturns(ctx: BaseAudioContext, source: GainNode, wet:
         return { city, send, delays, fades, feedback, level, head: 0, ms: null as number | null };
     });
 
-    return (selected: ReadonlySet<string>, feedback: number, measurements: Measurements) => {
+    return (selected: ReadonlySet<string>, feedback: number, measurements: Measurements, feedbackStopped = false) => {
         const ready = (code: string) => {
             const ms = measurements[code]?.ms;
             return selected.has(code) && ms != null && Number.isFinite(ms) && ms > 0 && ms < MAX_DELAY_MS;
@@ -52,7 +52,7 @@ export function createAtlasReturns(ctx: BaseAudioContext, source: GainNode, wet:
                 tap.ms = ms;
             }
             tap.send.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.008);
-            tap.feedback.gain.setTargetAtTime(on ? Math.max(0, Math.min(MAX_FEEDBACK, feedback)) / 100 : 0, ctx.currentTime, 0.008);
+            tap.feedback.gain.setTargetAtTime(on && !feedbackStopped ? Math.max(0, Math.min(MAX_FEEDBACK, feedback)) / 100 : 0, ctx.currentTime, 0.008);
             tap.level.gain.setTargetAtTime(on ? 1 / count : 0, ctx.currentTime, 0.008);
         }
     };

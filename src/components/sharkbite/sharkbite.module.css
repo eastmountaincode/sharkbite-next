@@ -1138,6 +1138,39 @@
     top: 8.57cqw;
     transform: translate(-50%, -50%) rotate(-1deg);
 }
+.feedbackStop {
+    position: absolute;
+    left: 80%;
+    top: 0;
+    transform: translate(-50%, -50%);
+    display: grid;
+    place-items: center;
+    width: clamp(28px, 3.8cqw, 40px);
+    aspect-ratio: 1;
+    padding: 0;
+    border: 1.5px solid var(--line);
+    background: transparent;
+    color: var(--line);
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+.feedbackStop::before {
+    content: "";
+    width: 40%;
+    aspect-ratio: 1;
+    background: currentColor;
+}
+.feedbackStop[aria-pressed="true"] {
+    color: var(--panel);
+    background: var(--line);
+}
+.feedbackStop:focus-visible {
+    outline: 2px solid var(--line);
+    outline-offset: 3px;
+}
 .feedbackValue {
     position: absolute;
     top: 10.6cqw;
