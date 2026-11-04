@@ -82,6 +82,40 @@ console.log("PASS: silence without measurements, deselection, decay, and bounded
     console.log("PASS: momentary stop drains repeats, preserves the first echo, and restores 129% on release");
 }
 
+{
+    const ctx = new webAudioEngine.OfflineAudioContext(1, rate * 4, rate);
+    const source = ctx.createGain();
+    const wet = ctx.createGain();
+    wet.connect(ctx.destination);
+    const update = createAtlasReturns(ctx, source, wet);
+    const selected = new Set(["TYO"]);
+    // Binary-exact delay values avoid the software renderer's fractional-index
+    // buffer-wrap bug; native-browser checks also exercise fractional timings.
+    update(selected, 99, { TYO: { ms: 125, unavailable: false } });
+    const pulse = ctx.createBufferSource();
+    pulse.buffer = ctx.createBuffer(1, rate * 0.1, rate);
+    const tone = pulse.buffer.getChannelData(0);
+    for (let i = 0; i < tone.length; i++) tone[i] = 0.02 * Math.sin(2 * Math.PI * 220 * i / rate);
+    pulse.connect(source);
+    pulse.start(0.1);
+    let checkpoint = ctx.suspend(0.5);
+    const rendered = ctx.startRendering();
+    for (let i = 0; i < 11; i++) {
+        await checkpoint;
+        update(selected, 99, { TYO: { ms: [125, 156.25, 187.5, 218.75][i % 4], unavailable: false } });
+        if (i < 10) checkpoint = ctx.suspend(0.75 + i * 0.25);
+        await ctx.resume();
+    }
+    const audio = (await rendered).getChannelData(0);
+    assert(audio.every(Number.isFinite) && peak(audio) <= 1,
+        `Frequent updates at 99% must stay bounded (peak ${peak(audio)}, first invalid sample ${audio.findIndex(value => !Number.isFinite(value))})`);
+    assert(peak(audio.slice(3.4 * rate)) > 1e-6, "Frequent updates must preserve the feedback tail");
+    let largestStep = 0;
+    for (let i = 1; i < audio.length; i++) largestStep = Math.max(largestStep, Math.abs(audio[i] - audio[i - 1]));
+    assert(largestStep < 0.025, "Delay updates must not introduce abrupt jumps in a quiet tone");
+    console.log("PASS: 4 Hz delay updates at 99% preserve a bounded tail without abrupt sample jumps");
+}
+
 const { measureDestination } = await import(encode(compile("measurements").replace('"./destinations"', JSON.stringify(config))));
 const originalFetch = globalThis.fetch;
 const originalPerformance = globalThis.performance;
@@ -90,6 +124,7 @@ let clock = 0;
 let request = 0;
 const controller = new AbortController();
 const published = [];
+const roundTrips = [];
 try {
     Object.defineProperty(globalThis, "performance", { configurable: true, value: { now: () => clock } });
     globalThis.setTimeout = (fn, ms, ...args) => originalTimeout(fn, Math.min(ms, 1), ...args);
@@ -106,8 +141,9 @@ try {
     await measureDestination(destinations.find(city => city.code === "TYO"), controller.signal, result => {
         published.push(result);
         if (result.unavailable) controller.abort();
-    });
+    }, { onRoundTrip: ms => roundTrips.push(ms) });
     assert.deepEqual(published[0], { ms: null, unavailable: false });
+    assert.deepEqual(roundTrips, [120, 200, 100], "Animations must receive actual round trips, without connection warmup or median filtering");
     assert.equal(published[1].ms, 120, "Connection warmup must not become the delay");
     assert.deepEqual(published.at(-1), { ms: 120, unavailable: true }, "Network loss must preserve the last measured delay");
     const requestsAfterAbort = request;
@@ -140,6 +176,42 @@ try {
     assert.equal(request, 1, "Initial failures must finish instead of retrying indefinitely");
     assert.deepEqual(failedReadings.at(-1), { ms: 120, unavailable: true });
     console.log("PASS: bounded initial sampling, warmup preserves prior readings, and initial failures finish");
+
+    const waits = [];
+    globalThis.setTimeout = (fn, ms, ...args) => {
+        waits.push(ms);
+        return originalTimeout(fn, Math.min(ms, 1), ...args);
+    };
+    request = 0;
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const fastController = new AbortController();
+    globalThis.fetch = async () => {
+        maxInFlight = Math.max(maxInFlight, ++inFlight);
+        await new Promise(resolve => originalTimeout(resolve, 1));
+        clock += [800, 80, 80, 80, 600, 80, 80][request++];
+        inFlight -= 1;
+        return { type: "opaque", status: 0 };
+    };
+    await measureDestination(destinations[0], fastController.signal, () => {
+        if (request === 7) fastController.abort();
+    });
+    assert.deepEqual(waits.slice(3), [170, 0, 170], "Polling must include the round trip in its 250 ms interval");
+    assert.equal(maxInFlight, 1, "Slow destinations must never accumulate overlapping requests");
+
+    waits.length = 0;
+    request = 0;
+    const backoffController = new AbortController();
+    globalThis.fetch = async () => {
+        request += 1;
+        throw new TypeError("Network unavailable");
+    };
+    await measureDestination(destinations[0], backoffController.signal, measurement => {
+        assert.equal(measurement.ms, 120, "Backoff must preserve the existing musical delay");
+        if (request === 5) backoffController.abort();
+    }, { initial: { ms: 120, unavailable: false } });
+    assert.deepEqual(waits, [15000, 30000, 60000, 60000], "Repeated failures must back off to one attempt per minute");
+    console.log("PASS: 250 ms polling, single requests in flight, and capped exponential failure backoff");
 } finally {
     globalThis.fetch = originalFetch;
     Object.defineProperty(globalThis, "performance", { configurable: true, value: originalPerformance });

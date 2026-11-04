@@ -1,5 +1,7 @@
 import { type CSSProperties, useEffect, useRef } from "react";
-import { destinations, type Measurement, type Measurements } from "./destinations";
+import { destinations, type Measurement, type Measurements, type Pings } from "./destinations";
+import type { MapLocation } from "./use-listener-location";
+import { PingRoute } from "./ping-route";
 import styles from "./atlas.module.css";
 
 function formatMeasurement(measurement?: Measurement) {
@@ -15,13 +17,14 @@ function delayColor(measurement?: Measurement) {
     return `rgb(${short.map((channel, index) => Math.round(channel + (long[index] - channel) * amount)).join(" ")})`;
 }
 
-export function DestinationMap({ inline = false, selected, measurements, select, onClose, onTest }: {
+export function DestinationMap({ inline = false, selected, measurements, pings, origin, select, onClose }: {
     inline?: boolean;
     selected: ReadonlySet<string>;
     measurements: Measurements;
+    pings: Pings;
+    origin: MapLocation | null;
     select: (code: string, enable: boolean) => void;
     onClose: () => void;
-    onTest: () => void;
 }) {
     const dialog = useRef<HTMLDialogElement>(null);
 
@@ -39,6 +42,15 @@ export function DestinationMap({ inline = false, selected, measurements, select,
                 <div className={styles.map}>
                     <svg viewBox="0 0 360 180" aria-hidden="true">
                         <image href="/world-land.svg" width="360" height="180" />
+                        {origin && <>
+                            {destinations.filter(city => selected.has(city.code)).map(city => (
+                                <PingRoute key={city.code} origin={origin} destination={city}
+                                    ping={pings[city.code]} color={delayColor(measurements[city.code])} />
+                            ))}
+                            <circle className={styles.origin} cx={origin.lon + 180} cy={90 - origin.lat} r="2.2">
+                                <title>Your approximate location</title>
+                            </circle>
+                        </>}
                     </svg>
                     {destinations.map(city => <button key={city.code} className={styles.pin}
                         aria-label={city.name} aria-pressed={selected.has(city.code)}
@@ -66,9 +78,6 @@ export function DestinationMap({ inline = false, selected, measurements, select,
                     </button>;
                 })}
             </div>
-            <footer className={styles.bottom}>
-                <button onClick={onTest}>Test sound</button>
-            </footer>
         </section>
     );
 

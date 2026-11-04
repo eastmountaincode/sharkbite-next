@@ -40,6 +40,7 @@ import styles from "./sharkbite.module.css";
 import { createAtlasReturns } from "@/app/atlas/routes";
 import { MAX_FEEDBACK } from "@/app/atlas/destinations";
 import { useMeasurements } from "@/app/atlas/use-measurements";
+import { useListenerLocation } from "@/app/atlas/use-listener-location";
 import { DestinationMap } from "@/app/atlas/destination-map";
 import { StartScreen } from "./start-screen";
 import { TopControls } from "./top-controls";
@@ -102,7 +103,8 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
         setInputMonitorLevel((currentLevel) => (Math.abs(currentLevel - level) < 0.015 ? currentLevel : level));
     }, []);
 
-    const measurements = useMeasurements(selected, status.running, atlas);
+    const { measurements, pings } = useMeasurements(selected, status.running, atlas);
+    const listenerLocation = useListenerLocation(atlas);
 
     useEffect(() => {
         if (status.running) updateReturns.current?.(selected, feedback, measurements, feedbackStopped);
@@ -414,12 +416,10 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                     inline={desktopLayout}
                     selected={selected}
                     measurements={measurements}
+                    pings={pings}
+                    origin={listenerLocation}
                     select={selectCity}
                     onClose={() => setMapOpen(false)}
-                    onTest={() => {
-                        const engine = getEngine();
-                        void engine.noteOn(84).then(() => window.setTimeout(() => engine.noteOff(84), 35));
-                    }}
                 />
             )}
 

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { destinations, type Measurements } from "./destinations";
+import { destinations, type Measurements, type Pings } from "./destinations";
 import { measureDestination } from "./measurements";
 
 export function useMeasurements(selected: ReadonlySet<string>, running: boolean, enabled = true) {
     const [measurements, setMeasurements] = useState<Measurements>({});
+    const [pings, setPings] = useState<Pings>({});
     const latest = useRef<Measurements>({});
     const sampled = useRef(new Set<string>());
     const workers = useRef(new Map<string, { controller: AbortController; continuous: boolean }>());
@@ -35,7 +36,18 @@ export function useMeasurements(selected: ReadonlySet<string>, running: boolean,
                 latest.current[destination.code] = measurement;
                 if (measurement.ms !== null || measurement.unavailable) sampled.current.add(destination.code);
                 setMeasurements(current => ({ ...current, [destination.code]: measurement }));
-            }, { once: !continuous, initial: latest.current[destination.code] }).then(() => {
+            }, {
+                once: !continuous,
+                initial: latest.current[destination.code],
+                onRoundTrip: continuous ? ms => {
+                    if (controller.signal.aborted) return;
+                    const at = performance.now();
+                    setPings(current => ({
+                        ...current,
+                        [destination.code]: { id: (current[destination.code]?.id ?? 0) + 1, ms, at },
+                    }));
+                } : undefined,
+            }).then(() => {
                 if (active.get(destination.code)?.controller === controller) {
                     active.delete(destination.code);
                 }
@@ -43,5 +55,5 @@ export function useMeasurements(selected: ReadonlySet<string>, running: boolean,
         }
     }, [selected, running, enabled]);
 
-    return measurements;
+    return { measurements, pings };
 }

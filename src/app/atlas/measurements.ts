@@ -1,6 +1,8 @@
 import { MAX_DELAY_MS, type Destination, type Measurement } from "./destinations";
 
-const POLL_INTERVAL_MS = 1000;
+const POLL_INTERVAL_MS = 250;
+const INITIAL_RETRY_MS = 15000;
+const MAX_RETRY_MS = 60000;
 
 function wait(ms: number, signal: AbortSignal) {
     return new Promise<void>(resolve => {
@@ -19,10 +21,11 @@ export async function measureDestination(
     destination: Destination,
     signal: AbortSignal,
     publish: (measurement: Measurement) => void,
-    options: { once?: boolean; initial?: Measurement } = {},
+    options: { once?: boolean; initial?: Measurement; onRoundTrip?: (ms: number) => void } = {},
 ) {
     const samples: number[] = [];
     let warmed = false;
+    let failures = 0;
     let last: number | null = options.initial?.ms ?? null;
     publish(options.initial ?? { ms: null, unavailable: false });
     while (!signal.aborted) {
@@ -45,10 +48,12 @@ export async function measureDestination(
             if (signal.aborted) return;
             if (typeof document !== "undefined" && document.hidden) continue;
             if (ms <= 0 || ms >= MAX_DELAY_MS) throw new Error("Measurement timed out");
+            failures = 0;
             if (!warmed) {
                 // Discard DNS/TLS connection setup before using the first delay.
                 warmed = true;
             } else {
+                options.onRoundTrip?.(ms);
                 samples.push(ms);
                 if (samples.length > 3) samples.shift();
                 const sorted = [...samples].sort((a, b) => a - b);
@@ -57,8 +62,8 @@ export async function measureDestination(
                 publish({ ms: last, unavailable: false });
                 if (options.once && samples.length === 3) return;
             }
-            // Aim for one request per second, including its round trip. Awaiting
-            // each request keeps slow connections from building up a queue.
+            // Aim for four requests per second, including the round trip.
+            // Awaiting each reply keeps at most one request in flight per city.
             await wait(samples.length < 3 ? 200 : Math.max(0, POLL_INTERVAL_MS - (performance.now() - started)), signal);
         } catch {
             if (signal.aborted) return;
@@ -67,7 +72,7 @@ export async function measureDestination(
             if (options.once) return;
             warmed = false;
             samples.length = 0;
-            await wait(15000, signal);
+            await wait(Math.min(MAX_RETRY_MS, INITIAL_RETRY_MS * 2 ** Math.min(failures++, 2)), signal);
         }
     }
 }

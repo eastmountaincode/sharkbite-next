@@ -18,5 +18,7 @@ export const destinations = [
 export type Destination = typeof destinations[number];
 export type Measurement = { ms: number | null; unavailable: boolean };
 export type Measurements = Partial<Record<string, Measurement>>;
+export type Ping = { id: number; ms: number; at: number };
+export type Pings = Partial<Record<string, Ping>>;
 export const MAX_FEEDBACK = 150;
 export const MAX_DELAY_MS = 3000;

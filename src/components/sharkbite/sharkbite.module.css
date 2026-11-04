@@ -1011,8 +1011,12 @@
   }
 
     .shell[data-atlas="true"] {
+        --stage-padding: clamp(16px, 2vw, 28px);
+        --atlas-pedal-height: clamp(260px, calc(100svh - 440px), 400px);
         align-content: start;
-        padding-top: max(var(--stage-padding), 64px);
+        gap: 12px;
+        padding-top: 60px;
+        padding-bottom: 16px;
     }
 
   .shell[data-piano-open="true"] {
@@ -1031,6 +1035,11 @@
   .shell[data-piano-open="true"] .pianoPanel {
     justify-self: start;
   }
+
+    .shell[data-atlas="true"] .pedalCanvas,
+    .shell[data-atlas="true"][data-piano-open="true"] .pedalCanvas {
+        width: min(100%, calc(var(--atlas-pedal-height) * 1.4));
+    }
 }
 
 @media (max-width: 760px) {
