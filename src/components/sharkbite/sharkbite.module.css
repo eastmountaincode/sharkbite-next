@@ -425,6 +425,10 @@
   width: 30%;
 }
 
+.shell[data-atlas="true"] .pedalLogoControl {
+    width: 28%;
+}
+
 .pedalLogoImage {
   display: block;
   filter: brightness(0);
@@ -718,6 +722,7 @@
 .inputDialogBody {
   display: flex;
   flex-direction: column;
+    gap: 12px;
   padding: 0;
 }
 
@@ -1004,6 +1009,11 @@
   .shell {
     --corner-control-top: clamp(12px, 2.1vw, 30px);
   }
+
+    .shell[data-atlas="true"] {
+        align-content: start;
+        padding-top: max(var(--stage-padding), 64px);
+    }
 
   .shell[data-piano-open="true"] {
     grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);

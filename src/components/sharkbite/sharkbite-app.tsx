@@ -6,6 +6,7 @@ import {
     useEffect,
     useRef,
     useState,
+    useSyncExternalStore,
 } from "react";
 import { TAPS, type TapId } from "@/config/taps";
 import { AudioEngine } from "@/lib/audio/audio-engine";
@@ -48,7 +49,21 @@ import { useKnobControl } from "./use-knob-control";
 import { usePedalEditor } from "./use-pedal-editor";
 import { useSynthController } from "./use-synth-controller";
 
+const DESKTOP_LAYOUT_QUERY = "(min-width: 761px)";
+
+function subscribeToDesktopLayout(onChange: () => void) {
+    const media = window.matchMedia(DESKTOP_LAYOUT_QUERY);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+}
+
+function getDesktopLayout() {
+    return window.matchMedia(DESKTOP_LAYOUT_QUERY).matches;
+}
+
 export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
+    const desktopLayout = useSyncExternalStore(subscribeToDesktopLayout, getDesktopLayout, () => false);
+    const inlineDestinations = atlas && desktopLayout;
     const [selected, setSelected] = useState(new Set(["TYO"]));
     const [feedback, setFeedback] = useState(35);
     const [feedbackStopped, setFeedbackStopped] = useState(false);
@@ -311,7 +326,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
     } as CSSProperties;
 
     return (
-        <main className={styles.shell} data-piano-open={pianoOpen ? "true" : "false"}>
+        <main className={styles.shell} data-atlas={atlas ? "true" : "false"} data-piano-open={pianoOpen ? "true" : "false"}>
             {!outputDialogOpen && status.message.startsWith("Output muted:") ? (
                 <button className={styles.outputWarning} role="alert" type="button" onClick={openOutputDialog}>
                     {status.message} Open output settings
@@ -320,16 +335,10 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
             <TopControls
                 infoDialogOpen={infoDialogOpen}
                 pianoVisible={pianoVisible}
-                showInfoToggle={!startScreenVisible && !mapOpen}
+                showInfoToggle={!startScreenVisible && !mapOpen && !inlineDestinations}
                 onOpenInfo={() => setInfoDialogOpen(true)}
                 onTogglePiano={togglePiano}
             />
-            {mapOpen && <DestinationMap selected={selected} measurements={measurements} select={selectCity} onClose={() => setMapOpen(false)}
-                onInfo={() => setInfoDialogOpen(true)}
-                onTest={() => {
-                    const engine = getEngine();
-                    void engine.noteOn(84).then(() => window.setTimeout(() => engine.noteOff(84), 35));
-                }} />}
             <PedalSurface
                 controlDragState={controlDragState}
                 controlLayout={controlLayout}
@@ -383,7 +392,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                     <span className={styles.jackLabel}>Feedback</span>
                     <output className={styles.feedbackValue}>{feedback}%</output>
                 </div>}
-                {atlas && <button className={styles.destinationsToggle} onClick={() => setMapOpen(true)} aria-haspopup="dialog">Destinations</button>}
+                {atlas && !desktopLayout && <button className={styles.destinationsToggle} onClick={() => setMapOpen(true)} aria-haspopup="dialog">Destinations</button>}
             </PedalSurface>
 
             <PianoPanel
@@ -400,6 +409,21 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                 onOctaveChange={updateSynthOctave}
                 onWaveChange={updateSynthWave}
             />
+
+            {atlas && (desktopLayout || mapOpen) && (
+                <DestinationMap
+                    inline={desktopLayout}
+                    selected={selected}
+                    measurements={measurements}
+                    select={selectCity}
+                    onClose={() => setMapOpen(false)}
+                    onInfo={() => setInfoDialogOpen(true)}
+                    onTest={() => {
+                        const engine = getEngine();
+                        void engine.noteOn(84).then(() => window.setTimeout(() => engine.noteOff(84), 35));
+                    }}
+                />
+            )}
 
             {ENABLE_INPUT_AREA_HELPER ? (
                 <InputAreaHelperPanel

@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react";
 import { destinations, type Measurements } from "./destinations";
 import styles from "./atlas.module.css";
 
-export function DestinationMap({ selected, measurements, select, onClose, onInfo, onTest }: {
+export function DestinationMap({ inline = false, selected, measurements, select, onClose, onInfo, onTest }: {
+    inline?: boolean;
     selected: ReadonlySet<string>;
     measurements: Measurements;
     select: (code: string, enable: boolean) => void;
@@ -13,15 +14,14 @@ export function DestinationMap({ selected, measurements, select, onClose, onInfo
     const dialog = useRef<HTMLDialogElement>(null);
 
     useEffect(() => {
-        dialog.current?.showModal();
-    }, []);
+        if (!inline) dialog.current?.showModal();
+    }, [inline]);
 
-    return <dialog className={styles.dialog} ref={dialog} aria-labelledby="destination-title" onClose={onClose}
-        onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
+    const content = (
         <section aria-label="Delay destinations">
             <header className={styles.caption}>
                 <h2 id="destination-title">Destinations</h2>
-                <button autoFocus onClick={() => dialog.current?.close()}>Close</button>
+                {!inline && <button autoFocus onClick={() => dialog.current?.close()}>Close</button>}
             </header>
             <div className={styles.map}>
                 <svg viewBox="0 0 360 140" aria-hidden="true">
@@ -48,5 +48,12 @@ export function DestinationMap({ selected, measurements, select, onClose, onInfo
                 <button onClick={() => { dialog.current?.close(); onInfo(); }}>More info</button>
             </footer>
         </section>
+    );
+
+    if (inline) return <div className={styles.inline}>{content}</div>;
+
+    return <dialog className={styles.dialog} ref={dialog} aria-labelledby="destination-title" onClose={onClose}
+        onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
+        {content}
     </dialog>;
 }
