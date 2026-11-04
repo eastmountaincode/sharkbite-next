@@ -26,11 +26,12 @@ export function createAtlasReturns(ctx: AudioContext, source: GainNode, wet: Gai
     });
 
     return (selected: ReadonlySet<string>, feedback: number) => {
+        const audibleCount = cities.filter(city => selected.has(city.code)).length;
         taps.forEach((tap, i) => {
             const on = selected.has(cities[i].code);
             tap.send.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.008);
             tap.feedback.gain.setTargetAtTime(on ? feedback / 100 : 0, ctx.currentTime, 0.008);
-            tap.level.gain.setTargetAtTime(on ? 1 / selected.size : 0, ctx.currentTime, 0.008);
+            tap.level.gain.setTargetAtTime(on ? 1 / audibleCount : 0, ctx.currentTime, 0.008);
         });
     };
 }
