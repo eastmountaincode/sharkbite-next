@@ -1,5 +1,7 @@
 import { MAX_DELAY_MS, type Destination, type Measurement } from "./destinations";
 
+const POLL_INTERVAL_MS = 1000;
+
 function wait(ms: number, signal: AbortSignal) {
     return new Promise<void>(resolve => {
         if (signal.aborted) return resolve();
@@ -53,7 +55,9 @@ export async function measureDestination(
                 last = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
                 publish({ ms: last, unavailable: false });
             }
-            await wait(samples.length < 3 ? 200 : 15000, signal);
+            // Aim for one request per second, including its round trip. Awaiting
+            // each request keeps slow connections from building up a queue.
+            await wait(samples.length < 3 ? 200 : Math.max(0, POLL_INTERVAL_MS - (performance.now() - started)), signal);
         } catch {
             if (signal.aborted) return;
             // A transient outage keeps the last measured delay playing.
