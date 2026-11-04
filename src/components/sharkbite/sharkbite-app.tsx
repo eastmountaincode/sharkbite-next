@@ -35,6 +35,8 @@ import {
     SYNTH_WAVES,
 } from "./sharkbite-model";
 import styles from "./sharkbite.module.css";
+import { createAtlasReturns, footswitchCities } from "@/app/atlas/routes";
+import { DestinationMap } from "@/app/atlas/destination-map";
 import { StartScreen } from "./start-screen";
 import { TopControls } from "./top-controls";
 import { useAudioInputs } from "./use-audio-inputs";
@@ -43,7 +45,26 @@ import { useKnobControl } from "./use-knob-control";
 import { usePedalEditor } from "./use-pedal-editor";
 import { useSynthController } from "./use-synth-controller";
 
-export function SharkbiteApp() {
+export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
+    const [selected, setSelected] = useState(new Set(["TYO"]));
+    const [feedback, setFeedback] = useState(35);
+    const [mapOpen, setMapOpen] = useState(false);
+    const updateReturns = useRef<ReturnType<typeof createAtlasReturns> | null>(null);
+    const feedbackControl = useKnobControl({
+        value: feedback,
+        maxValue: 90,
+        onChange: value => setFeedback(Math.max(0, Math.min(90, Math.round(value)))),
+    });
+
+    function selectCity(code: string, enable: boolean) {
+        setSelected(current => {
+            const next = new Set(current);
+            if (enable) next.add(code);
+            else next.delete(code);
+            return next;
+        });
+    }
+
     const engineRef = useRef<AudioEngine | null>(null);
     const inputDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const outputDialogCloseRef = useRef<HTMLButtonElement | null>(null);
@@ -63,10 +84,17 @@ export function SharkbiteApp() {
         setInputMonitorLevel((currentLevel) => (Math.abs(currentLevel - level) < 0.015 ? currentLevel : level));
     }, []);
 
+    useEffect(() => {
+        if (status.running) updateReturns.current?.(selected, feedback);
+    }, [status.running, selected, feedback]);
+
     const getEngine = useCallback(() => {
         if (!engineRef.current) {
             engineRef.current = new AudioEngine({
-                taps: TAPS,
+                taps: atlas ? [] : TAPS,
+                localReturns: atlas ? (ctx, source, wet) => {
+                    updateReturns.current = createAtlasReturns(ctx, source, wet);
+                } : undefined,
                 onStatus: setStatus,
                 onTapEnabledChange: (tapId, enabled) => {
                     setEnabledTaps((current) => ({ ...current, [tapId]: enabled }));
@@ -85,7 +113,7 @@ export function SharkbiteApp() {
         }
 
         return engineRef.current;
-    }, [updateInputMonitorLevel]);
+    }, [atlas, updateInputMonitorLevel]);
 
     const {
         activeNotes,
@@ -244,6 +272,11 @@ export function SharkbiteApp() {
 
     const toggleTap = (tapId: TapId) => {
         playButtonPress();
+        if (atlas) {
+            const code = footswitchCities[tapId].code;
+            selectCity(code, !selected.has(code));
+            return;
+        }
         getEngine().setTapEnabled(tapId, !enabledTaps[tapId]);
     };
 
@@ -286,14 +319,21 @@ export function SharkbiteApp() {
             <TopControls
                 infoDialogOpen={infoDialogOpen}
                 pianoVisible={pianoVisible}
-                showInfoToggle={!startScreenVisible}
+                showInfoToggle={!atlas && !startScreenVisible}
                 onOpenInfo={() => setInfoDialogOpen(true)}
                 onTogglePiano={togglePiano}
             />
+            {atlas && !startScreenVisible && <button className={styles.infoToggle} onClick={() => setMapOpen(true)} aria-haspopup="dialog">Map</button>}
+            {mapOpen && <DestinationMap selected={selected} select={selectCity} onClose={() => setMapOpen(false)}
+                onTest={() => {
+                    const engine = getEngine();
+                    void engine.noteOn(84).then(() => window.setTimeout(() => engine.noteOff(84), 35));
+                }} />}
             <PedalSurface
                 controlDragState={controlDragState}
                 controlLayout={controlLayout}
                 controlMoveModeActive={controlMoveModeActive}
+                atlasTaps={atlas ? { selected, cities: footswitchCities } : undefined}
                 enabledTaps={enabledTaps}
                 inputDialogOpen={inputDialogOpen}
                 outputDialogOpen={outputDialogOpen}
@@ -328,7 +368,18 @@ export function SharkbiteApp() {
                 onWetDryPointerCancel={wetDryControl.stopDrag}
                 onWetDryPointerDown={wetDryControl.handlePointerDown}
                 onWetDryPointerMove={wetDryControl.handlePointerMove}
-            />
+            >
+                {atlas && <div className={styles.feedbackPosition} style={{ "--knob-rotation": `${knobValueToCssRotation(feedback)}deg` } as CSSProperties}>
+                    <div className={styles.knobControl} role="slider" aria-label="Feedback" tabIndex={0}
+                        aria-valuemin={0} aria-valuemax={90} aria-valuenow={feedback} aria-valuetext={`${feedback}%`}
+                        onKeyDown={feedbackControl.handleKeyDown} onPointerDown={feedbackControl.handlePointerDown}
+                        onPointerMove={feedbackControl.handlePointerMove} onPointerCancel={feedbackControl.stopDrag}
+                        onPointerUp={feedbackControl.stopDrag} onLostPointerCapture={feedbackControl.handleLostPointerCapture}>
+                        <span aria-hidden="true" className={styles.knob} />
+                    </div>
+                    <span className={styles.jackLabel}>Feedback</span>
+                </div>}
+            </PedalSurface>
 
             <PianoPanel
                 activeNotes={activeNotes}
