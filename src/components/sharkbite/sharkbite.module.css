@@ -1123,10 +1123,10 @@
 }
 
 .feedbackPosition {
-    left: 22.1%;
+    left: 50%;
     position: absolute;
-    top: 56.4%;
-    width: 7%;
+    top: 57%;
+    width: 13%;
 }
 .feedbackPosition .knobControl {
     left: 0;
@@ -1135,6 +1135,24 @@
 }
 .feedbackPosition .jackLabel {
     left: 0;
-    top: 4.1cqw;
-    font-size: 2.1cqw;
+    top: 8.57cqw;
+    transform: translate(-50%, -50%) rotate(-1deg);
 }
+.feedbackValue {
+    position: absolute;
+    top: 10.6cqw;
+    left: 0;
+    transform: translateX(-50%);
+    font: clamp(10px, 1.5cqw, 16px)/1.2 Helvetica, sans-serif;
+}
+.destinationsToggle {
+    position: absolute;
+    left: 50%;
+    top: 84%;
+    transform: translate(-50%, -50%);
+    font: clamp(18px, 3.2cqw, 36px)/1 var(--font-botch), Helvetica, sans-serif;
+    padding: 0.6em 1em;
+    cursor: pointer;
+    pointer-events: auto;
+}
+.destinationsToggle:hover { opacity: 0.65; }

@@ -43,7 +43,7 @@ export function useKnobControl({ maxValue = MAX_INPUT_LEVEL, onChange, value }: 
         event.currentTarget.setPointerCapture(event.pointerId);
         const startPointer = pointerPositionForElement(event);
         dragRef.current = {
-            currentKnobAngle: knobValueToAngle(value),
+            currentKnobAngle: knobValueToAngle(value / maxValue * MAX_INPUT_LEVEL),
             lastPointerAngle: startPointer.angle,
             pointerId: event.pointerId,
             spinReady: startPointer.radiusRatio >= INPUT_LEVEL_SPIN_DEAD_ZONE_RATIO,
@@ -70,7 +70,7 @@ export function useKnobControl({ maxValue = MAX_INPUT_LEVEL, onChange, value }: 
         );
         dragState.lastPointerAngle = nextPointer.angle;
         dragState.currentKnobAngle = nextKnobAngle;
-        onChange(knobAngleToValue(nextKnobAngle));
+        onChange(knobAngleToValue(nextKnobAngle) / MAX_INPUT_LEVEL * maxValue);
     };
 
     const handleLostPointerCapture = () => {

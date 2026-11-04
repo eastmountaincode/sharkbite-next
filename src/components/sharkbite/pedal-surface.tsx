@@ -26,7 +26,7 @@ type ControlDragStateSnapshot = {
 
 type PedalSurfaceProps = {
     children?: React.ReactNode;
-    atlasTaps?: { selected: ReadonlySet<string>; cities: Record<TapId, { code: string; name: string; ms: number }> };
+    hideTaps?: boolean;
   controlDragState: ControlDragStateSnapshot;
   controlLayout: Record<ControlLayoutId, AreaPoint>;
   controlMoveModeActive: boolean;
@@ -80,7 +80,7 @@ const formatDelay = (value: number | null) => {
 
 export function PedalSurface({
   children,
-  atlasTaps,
+  hideTaps = false,
   controlDragState,
   controlLayout,
   controlMoveModeActive,
@@ -326,14 +326,13 @@ export function PedalSurface({
             <span className={styles.inputLevelMeterFill} />
           </span>
           {children}
-          {TAPS.map((tap) => {
+          {!hideTaps && TAPS.map((tap) => {
             const layout = controlLayout[tap.id];
-            const city = atlasTaps?.cities[tap.id];
-            const tapEnabled = city && atlasTaps ? atlasTaps.selected.has(city.code) : enabledTaps[tap.id];
+            const tapEnabled = enabledTaps[tap.id];
             const tapButtonSide = TAP_BUTTON_SIDE[tap.id];
             const capGeometry = tapButtonCapGeometry[tapButtonSide];
             const metrics = tapMetrics[tap.id];
-            const delayLabel = !tapEnabled ? "--" : city ? formatDelay(city.ms) : metrics.connectionState === "recovering" ? "Retrying" :
+            const delayLabel = !tapEnabled ? "--" : metrics.connectionState === "recovering" ? "Retrying" :
               metrics.connectionState === "connecting" ? "…" : formatDelay(metrics.rttMs);
             const tapButtonStyle = {
               "--control-x": `${layout.x}%`,
@@ -374,7 +373,7 @@ export function PedalSurface({
               >
                 <span aria-hidden="true" className={styles.tapButtonLight} />
                 <span aria-hidden="true" className={styles.tapButtonCap} />
-                <span className={styles.tapButtonLabel}>{city?.name ?? tap.name}</span>
+                <span className={styles.tapButtonLabel}>{tap.name}</span>
                 <span className={styles.tapButtonDelay}>
                   <span className={styles.tapButtonDelayValue}>{delayLabel}</span>
                   <span className={styles.tapButtonDelayLabel}>Delay</span>

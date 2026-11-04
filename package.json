@@ -11,7 +11,8 @@
     "do:droplets": "scripts/do/list-droplets.sh",
     "do:verify-taps": "scripts/do/verify-taps.sh",
     "test:audio": "node scripts/test-audio-routing.mjs",
-    "test:recovery": "node scripts/test-delay-recovery.mjs && node scripts/test-relay-recovery.mjs && node scripts/test-multiplex-continuity.mjs && node scripts/test-edge-relay.mjs"
+    "test:recovery": "node scripts/test-delay-recovery.mjs && node scripts/test-relay-recovery.mjs && node scripts/test-multiplex-continuity.mjs && node scripts/test-edge-relay.mjs",
+    "test:atlas": "node scripts/test-atlas-audio.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
