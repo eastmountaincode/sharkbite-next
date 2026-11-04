@@ -19,11 +19,12 @@ export async function measureDestination(
     destination: Destination,
     signal: AbortSignal,
     publish: (measurement: Measurement) => void,
+    options: { once?: boolean; initial?: Measurement } = {},
 ) {
     const samples: number[] = [];
     let warmed = false;
-    let last: number | null = null;
-    publish({ ms: null, unavailable: false });
+    let last: number | null = options.initial?.ms ?? null;
+    publish(options.initial ?? { ms: null, unavailable: false });
     while (!signal.aborted) {
         if (typeof document !== "undefined" && document.hidden) {
             await wait(15000, signal);
@@ -54,6 +55,7 @@ export async function measureDestination(
                 const middle = Math.floor(sorted.length / 2);
                 last = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
                 publish({ ms: last, unavailable: false });
+                if (options.once && samples.length === 3) return;
             }
             // Aim for one request per second, including its round trip. Awaiting
             // each request keeps slow connections from building up a queue.
@@ -62,6 +64,7 @@ export async function measureDestination(
             if (signal.aborted) return;
             // A transient outage keeps the last measured delay playing.
             publish({ ms: last, unavailable: true });
+            if (options.once) return;
             warmed = false;
             samples.length = 0;
             await wait(15000, signal);

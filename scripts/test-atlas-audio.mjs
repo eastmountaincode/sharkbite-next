@@ -114,6 +114,32 @@ try {
     await measureDestination(destinations[0], controller.signal, () => {});
     assert.equal(request, requestsAfterAbort, "Aborted selections must not make requests");
     console.log("PASS: direct uncached requests, warmup discarded, outage preserves delay, cancellation stops requests");
+
+    request = 0;
+    const initialReadings = [];
+    await measureDestination(destinations.find(city => city.code === "TYO"), new AbortController().signal,
+        measurement => initialReadings.push(measurement), { once: true });
+    assert.equal(request, 4, "Initial readings must stop after one warmup and three samples");
+    assert.deepEqual(initialReadings.at(-1), { ms: 120, unavailable: false }, "Initial reading must use the median of warmed samples");
+
+    request = 0;
+    const resumedReadings = [];
+    await measureDestination(destinations.find(city => city.code === "TYO"), new AbortController().signal,
+        measurement => resumedReadings.push(measurement), { once: true, initial: initialReadings.at(-1) });
+    assert.deepEqual(resumedReadings[0], initialReadings.at(-1), "Selecting a measured destination must preserve its reading during warmup");
+    assert(resumedReadings.every(measurement => measurement.ms !== null), "Warmup must not erase an existing delay");
+
+    request = 0;
+    globalThis.fetch = async () => {
+        request += 1;
+        throw new TypeError("Network unavailable");
+    };
+    const failedReadings = [];
+    await measureDestination(destinations[0], new AbortController().signal,
+        measurement => failedReadings.push(measurement), { once: true, initial: { ms: 120, unavailable: false } });
+    assert.equal(request, 1, "Initial failures must finish instead of retrying indefinitely");
+    assert.deepEqual(failedReadings.at(-1), { ms: 120, unavailable: true });
+    console.log("PASS: bounded initial sampling, warmup preserves prior readings, and initial failures finish");
 } finally {
     globalThis.fetch = originalFetch;
     Object.defineProperty(globalThis, "performance", { configurable: true, value: originalPerformance });

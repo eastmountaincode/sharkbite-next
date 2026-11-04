@@ -63,7 +63,6 @@ function getDesktopLayout() {
 
 export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
     const desktopLayout = useSyncExternalStore(subscribeToDesktopLayout, getDesktopLayout, () => false);
-    const inlineDestinations = atlas && desktopLayout;
     const [selected, setSelected] = useState(new Set(["TYO"]));
     const [feedback, setFeedback] = useState(35);
     const [feedbackStopped, setFeedbackStopped] = useState(false);
@@ -103,7 +102,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
         setInputMonitorLevel((currentLevel) => (Math.abs(currentLevel - level) < 0.015 ? currentLevel : level));
     }, []);
 
-    const measurements = useMeasurements(selected, atlas && status.running);
+    const measurements = useMeasurements(selected, status.running, atlas);
 
     useEffect(() => {
         if (status.running) updateReturns.current?.(selected, feedback, measurements, feedbackStopped);
@@ -335,7 +334,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
             <TopControls
                 infoDialogOpen={infoDialogOpen}
                 pianoVisible={pianoVisible}
-                showInfoToggle={!startScreenVisible && !mapOpen && !inlineDestinations}
+                showInfoToggle={!startScreenVisible && !mapOpen}
                 onOpenInfo={() => setInfoDialogOpen(true)}
                 onTogglePiano={togglePiano}
             />
@@ -417,7 +416,6 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                     measurements={measurements}
                     select={selectCity}
                     onClose={() => setMapOpen(false)}
-                    onInfo={() => setInfoDialogOpen(true)}
                     onTest={() => {
                         const engine = getEngine();
                         void engine.noteOn(84).then(() => window.setTimeout(() => engine.noteOff(84), 35));
