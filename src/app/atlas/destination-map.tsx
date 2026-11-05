@@ -1,8 +1,17 @@
 import { type CSSProperties, type FocusEvent, type PointerEvent, useState } from "react";
-import { destinations, type Measurement, type Measurements } from "./destinations";
+import { destinations, type Destination, type Measurement, type Measurements } from "./destinations";
 import type { MapLocation } from "./use-listener-location";
 import { mapRoute } from "./map-route";
 import styles from "./atlas.module.css";
+
+// Approximate map positions, read across the three-column city grid.
+const cityOrder: Record<Destination["code"], number> = {
+    YYC: 0, STO: 1, TYO: 2,
+    NYC: 3, LON: 4, HKG: 5,
+    SFO: 6, BOM: 7, SIN: 8,
+    SAO: 9, CPT: 10, SYD: 11,
+};
+const gridDestinations = [...destinations].sort((a, b) => cityOrder[a.code] - cityOrder[b.code]);
 
 function formatMeasurement(measurement?: Measurement) {
     if (measurement?.ms == null) return measurement?.unavailable ? "Unavailable" : "…";
@@ -75,7 +84,7 @@ export function DestinationMap({ selected, measurements, origin, select }: {
                 </div>
             </div>
             <div className={styles.cities}>
-                {destinations.map(city => {
+                {gridDestinations.map(city => {
                     const active = selected.has(city.code);
                     const measurement = measurements[city.code];
                     return <button key={city.code} {...cityInteraction(city.code)} aria-pressed={active}
