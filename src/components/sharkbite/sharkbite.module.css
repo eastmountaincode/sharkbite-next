@@ -431,11 +431,11 @@
 
 .shell[data-atlas="true"] {
     --atlas-logo-y: 36%;
-    --atlas-controls-y: 64%;
+    --atlas-controls-y: 65.5%;
 }
 
 .shell[data-atlas="true"] .pedalLogoControl {
-    width: 28%;
+    width: 29.5%;
     top: var(--atlas-logo-y);
 }
 
@@ -1248,25 +1248,52 @@
     top: 10.8cqw;
     left: 0;
 }
-.destinationsToggle {
-    position: absolute;
-    left: 50%;
-    top: 84%;
-    transform: translate(-50%, -50%);
-    font: clamp(18px, 3.2cqw, 36px)/1 var(--font-botch), Helvetica, sans-serif;
-    padding: 0.6em 1em;
-    cursor: pointer;
-    pointer-events: auto;
-}
-.destinationsToggle:hover { opacity: 0.65; }
-
 @media (max-width: 760px) {
     .shell[data-atlas="true"] {
-        --atlas-logo-y: 34%;
-        --atlas-controls-y: 59%;
+        position: relative;
+        gap: 20px;
+        padding-top: calc(env(safe-area-inset-top, 0px) + 64px);
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
     }
 
-    .destinationsToggle {
-        top: 88%;
+    .shell[data-atlas="true"] .infoToggle {
+        position: absolute;
+        top: calc(env(safe-area-inset-top, 0px) + 8px);
+        min-height: 44px;
+        padding: 0 4px;
+        font-size: 22px;
+        line-height: 1;
+    }
+
+    .shell[data-atlas="true"] .performanceGroup {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        width: min(100%, 520px);
+    }
+
+    .shell[data-atlas="true"] .pianoPanel {
+        max-width: none;
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .shell[data-atlas="true"] .pianoControls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .shell[data-atlas="true"] .pianoControl > span {
+        font-size: 16px;
+    }
+
+    .shell[data-atlas="true"] .pianoControl select {
+        font-size: 18px;
+        padding-inline: 8px 28px;
+        background-position: right 8px center;
+    }
+
+    .shell[data-atlas="true"] .keyboard {
+        height: clamp(128px, 35vw, 156px);
     }
 }

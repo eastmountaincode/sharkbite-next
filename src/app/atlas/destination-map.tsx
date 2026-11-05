@@ -1,4 +1,4 @@
-import { type CSSProperties, type FocusEvent, type PointerEvent, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type FocusEvent, type PointerEvent, useState } from "react";
 import { destinations, type Measurement, type Measurements } from "./destinations";
 import type { MapLocation } from "./use-listener-location";
 import { mapRoute } from "./map-route";
@@ -17,15 +17,12 @@ function delayColor(measurement?: Measurement) {
     return `rgb(${short.map((channel, index) => Math.round(channel + (long[index] - channel) * amount)).join(" ")})`;
 }
 
-export function DestinationMap({ inline = false, selected, measurements, origin, select, onClose }: {
-    inline?: boolean;
+export function DestinationMap({ selected, measurements, origin, select }: {
     selected: ReadonlySet<string>;
     measurements: Measurements;
     origin: MapLocation | null;
     select: (code: string, enable: boolean) => void;
-    onClose: () => void;
 }) {
-    const dialog = useRef<HTMLDialogElement>(null);
     const [hovered, setHovered] = useState<string | null>(null);
     const [focused, setFocused] = useState<string | null>(null);
     const highlighted = hovered ?? focused;
@@ -41,15 +38,10 @@ export function DestinationMap({ inline = false, selected, measurements, origin,
         onBlur: () => setFocused(current => current === code ? null : current),
     });
 
-    useEffect(() => {
-        if (!inline) dialog.current?.showModal();
-    }, [inline]);
-
-    const content = (
-        <section aria-label="Delay destinations">
+    return (
+        <section className={styles.destinations} aria-labelledby="destination-title">
             <header className={styles.caption}>
                 <h2 id="destination-title">Destinations</h2>
-                {!inline && <button autoFocus onClick={() => dialog.current?.close()}>Close</button>}
             </header>
             <div className={styles.mapArea}>
                 <div className={styles.map}>
@@ -86,7 +78,9 @@ export function DestinationMap({ inline = false, selected, measurements, origin,
                 {destinations.map(city => {
                     const active = selected.has(city.code);
                     const measurement = measurements[city.code];
-                    return <button key={city.code} {...cityInteraction(city.code)} aria-pressed={active} onClick={() => select(city.code, !active)}>
+                    return <button key={city.code} {...cityInteraction(city.code)} aria-pressed={active}
+                        style={{ "--delay-color": delayColor(measurement) } as CSSProperties}
+                        onClick={() => select(city.code, !active)}>
                         <span>{city.name}</span>
                         <small>{formatMeasurement(measurement)}</small>
                     </button>;
@@ -94,11 +88,4 @@ export function DestinationMap({ inline = false, selected, measurements, origin,
             </div>
         </section>
     );
-
-    if (inline) return <div className={styles.inline}>{content}</div>;
-
-    return <dialog className={styles.dialog} ref={dialog} aria-labelledby="destination-title" onClose={onClose}
-        onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
-        {content}
-    </dialog>;
 }

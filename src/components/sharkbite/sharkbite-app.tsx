@@ -6,7 +6,6 @@ import {
     useEffect,
     useRef,
     useState,
-    useSyncExternalStore,
 } from "react";
 import { TAPS, type TapId } from "@/config/taps";
 import { AudioEngine } from "@/lib/audio/audio-engine";
@@ -50,24 +49,10 @@ import { useKnobControl } from "./use-knob-control";
 import { usePedalEditor } from "./use-pedal-editor";
 import { useSynthController } from "./use-synth-controller";
 
-const DESKTOP_LAYOUT_QUERY = "(min-width: 761px)";
-
-function subscribeToDesktopLayout(onChange: () => void) {
-    const media = window.matchMedia(DESKTOP_LAYOUT_QUERY);
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-}
-
-function getDesktopLayout() {
-    return window.matchMedia(DESKTOP_LAYOUT_QUERY).matches;
-}
-
 export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
-    const desktopLayout = useSyncExternalStore(subscribeToDesktopLayout, getDesktopLayout, () => false);
     const [selected, setSelected] = useState(new Set(["TYO"]));
     const [feedback, setFeedback] = useState(35);
     const [feedbackStopped, setFeedbackStopped] = useState(false);
-    const [mapOpen, setMapOpen] = useState(false);
     const updateReturns = useRef<ReturnType<typeof createAtlasReturns> | null>(null);
     const feedbackControl = useKnobControl({
         value: feedback,
@@ -336,7 +321,8 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
             <TopControls
                 infoDialogOpen={infoDialogOpen}
                 pianoVisible={pianoVisible}
-                showInfoToggle={!startScreenVisible && !mapOpen}
+                showInfoToggle={!startScreenVisible}
+                showPianoToggle={!atlas}
                 onOpenInfo={() => setInfoDialogOpen(true)}
                 onTogglePiano={togglePiano}
             />
@@ -394,7 +380,6 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                         <span className={styles.jackLabel}>Feedback</span>
                         <output className={styles.feedbackValue}>{feedback}%</output>
                     </div>}
-                    {atlas && !desktopLayout && <button className={styles.destinationsToggle} onClick={() => setMapOpen(true)} aria-haspopup="dialog">Destinations</button>}
                 </PedalSurface>
 
                 <PianoPanel
@@ -413,14 +398,12 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                 />
             </div>
 
-            {atlas && (desktopLayout || mapOpen) && (
+            {atlas && (
                 <DestinationMap
-                    inline={desktopLayout}
                     selected={selected}
                     measurements={measurements}
                     origin={listenerLocation}
                     select={selectCity}
-                    onClose={() => setMapOpen(false)}
                 />
             )}
 
