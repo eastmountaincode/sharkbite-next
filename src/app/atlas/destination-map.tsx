@@ -79,7 +79,6 @@ export function DestinationMap({ selected, measurements, origin, select }: {
                     const active = selected.has(city.code);
                     const measurement = measurements[city.code];
                     return <button key={city.code} {...cityInteraction(city.code)} aria-pressed={active}
-                        style={{ "--delay-color": delayColor(measurement) } as CSSProperties}
                         onClick={() => select(city.code, !active)}>
                         <span>{city.name}</span>
                         <small>{formatMeasurement(measurement)}</small>
