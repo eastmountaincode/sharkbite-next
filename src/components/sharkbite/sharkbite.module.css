@@ -425,8 +425,24 @@
   width: 30%;
 }
 
+.shell[data-atlas="true"] {
+    --atlas-logo-y: 36%;
+    --atlas-controls-y: 64%;
+}
+
 .shell[data-atlas="true"] .pedalLogoControl {
     width: 28%;
+    top: var(--atlas-logo-y);
+}
+
+.shell[data-atlas="true"] .wetDryControl,
+.shell[data-atlas="true"] .inputLevelControl {
+    top: var(--atlas-controls-y);
+}
+
+.shell[data-atlas="true"] .wetDryLabel,
+.shell[data-atlas="true"] .inputLevelLabel {
+    top: calc(var(--atlas-controls-y) + 12%);
 }
 
 .pedalLogoImage {
@@ -1144,7 +1160,7 @@
 .feedbackPosition {
     left: 50%;
     position: absolute;
-    top: 57%;
+    top: var(--atlas-controls-y);
     width: 13%;
 }
 .feedbackPosition .knobControl {
@@ -1193,16 +1209,16 @@
 .feedbackValue {
     position: absolute;
     transform: translateX(-50%);
-    font: clamp(10px, 1.5cqw, 16px)/1.2 Helvetica, sans-serif;
+    font: 400 clamp(11px, 2.5cqw, 18px)/1 var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
     pointer-events: none;
     font-variant-numeric: tabular-nums;
 }
 .knobValue {
-    top: calc(var(--control-y) + 10.6cqw);
+    top: calc(var(--atlas-controls-y) + 10.8cqw);
     left: var(--control-x);
 }
 .feedbackValue {
-    top: 10.6cqw;
+    top: 10.8cqw;
     left: 0;
 }
 .destinationsToggle {
@@ -1216,3 +1232,14 @@
     pointer-events: auto;
 }
 .destinationsToggle:hover { opacity: 0.65; }
+
+@media (max-width: 760px) {
+    .shell[data-atlas="true"] {
+        --atlas-logo-y: 34%;
+        --atlas-controls-y: 59%;
+    }
+
+    .destinationsToggle {
+        top: 88%;
+    }
+}
