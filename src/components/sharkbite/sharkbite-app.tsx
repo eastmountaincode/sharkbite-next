@@ -340,76 +340,78 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                 onOpenInfo={() => setInfoDialogOpen(true)}
                 onTogglePiano={togglePiano}
             />
-            <PedalSurface
-                controlDragState={controlDragState}
-                controlLayout={controlLayout}
-                controlMoveModeActive={controlMoveModeActive}
-                hideTaps={atlas}
-                showControlValues={atlas}
-                enabledTaps={enabledTaps}
-                inputDialogOpen={inputDialogOpen}
-                outputDialogOpen={outputDialogOpen}
-                inputKnobStyle={inputKnobStyle}
-                inputLevel={inputLevel}
-                inputLevelDragging={inputLevelControl.dragging}
-                inputMeterStyle={inputMeterStyle}
-                layoutGridVisible={layoutGridVisible}
-                logoStyle={logoStyle}
-                maxInputLevel={MAX_INPUT_LEVEL}
-                pedalOverlayRef={pedalOverlayRef}
-                statusRunning={status.running}
-                tapButtonCapGeometry={tapButtonCapGeometry}
-                tapButtonStatePreviewVisible={tapButtonStatePreviewVisible}
-                tapMetrics={tapMetrics}
-                wetDry={wetDry}
-                wetDryDragging={wetDryControl.dragging}
-                wetDryKnobStyle={wetDryKnobStyle}
-                onInputLevelKeyDown={inputLevelControl.handleKeyDown}
-                onInputLevelLostPointerCapture={inputLevelControl.handleLostPointerCapture}
-                onInputLevelPointerCancel={inputLevelControl.stopDrag}
-                onInputLevelPointerDown={inputLevelControl.handlePointerDown}
-                onInputLevelPointerMove={inputLevelControl.handlePointerMove}
-                onOpenInputDialog={openInputDialog}
-                onOpenOutputDialog={openOutputDialog}
-                onStartControlDrag={startControlDrag}
-                onMoveControlDrag={handleControlDragPointerMove}
-                onStopControlDrag={stopControlDrag}
-                onToggleTap={toggleTap}
-                onWetDryKeyDown={wetDryControl.handleKeyDown}
-                onWetDryLostPointerCapture={wetDryControl.handleLostPointerCapture}
-                onWetDryPointerCancel={wetDryControl.stopDrag}
-                onWetDryPointerDown={wetDryControl.handlePointerDown}
-                onWetDryPointerMove={wetDryControl.handlePointerMove}
-            >
-                {atlas && <div className={styles.feedbackPosition} style={{ "--knob-rotation": `${knobValueToCssRotation(feedback / MAX_FEEDBACK * 100)}deg` } as CSSProperties}>
-                    <div className={styles.knobControl} role="slider" aria-label="Feedback" tabIndex={0}
-                        aria-valuemin={0} aria-valuemax={MAX_FEEDBACK} aria-valuenow={feedback} aria-valuetext={`${feedback}%`}
-                        onKeyDown={feedbackControl.handleKeyDown} onPointerDown={feedbackControl.handlePointerDown}
-                        onPointerMove={feedbackControl.handlePointerMove} onPointerCancel={feedbackControl.stopDrag}
-                        onPointerUp={feedbackControl.stopDrag} onLostPointerCapture={feedbackControl.handleLostPointerCapture}>
-                        <span aria-hidden="true" className={styles.knob} />
-                    </div>
-                    <FeedbackStopButton disabled={!status.running} pressed={feedbackStopped} onChange={setFeedbackStopped} />
-                    <span className={styles.jackLabel}>Feedback</span>
-                    <output className={styles.feedbackValue}>{feedback}%</output>
-                </div>}
-                {atlas && !desktopLayout && <button className={styles.destinationsToggle} onClick={() => setMapOpen(true)} aria-haspopup="dialog">Destinations</button>}
-            </PedalSurface>
+            <div className={styles.performanceGroup}>
+                <PedalSurface
+                    controlDragState={controlDragState}
+                    controlLayout={controlLayout}
+                    controlMoveModeActive={controlMoveModeActive}
+                    hideTaps={atlas}
+                    showControlValues={atlas}
+                    enabledTaps={enabledTaps}
+                    inputDialogOpen={inputDialogOpen}
+                    outputDialogOpen={outputDialogOpen}
+                    inputKnobStyle={inputKnobStyle}
+                    inputLevel={inputLevel}
+                    inputLevelDragging={inputLevelControl.dragging}
+                    inputMeterStyle={inputMeterStyle}
+                    layoutGridVisible={layoutGridVisible}
+                    logoStyle={logoStyle}
+                    maxInputLevel={MAX_INPUT_LEVEL}
+                    pedalOverlayRef={pedalOverlayRef}
+                    statusRunning={status.running}
+                    tapButtonCapGeometry={tapButtonCapGeometry}
+                    tapButtonStatePreviewVisible={tapButtonStatePreviewVisible}
+                    tapMetrics={tapMetrics}
+                    wetDry={wetDry}
+                    wetDryDragging={wetDryControl.dragging}
+                    wetDryKnobStyle={wetDryKnobStyle}
+                    onInputLevelKeyDown={inputLevelControl.handleKeyDown}
+                    onInputLevelLostPointerCapture={inputLevelControl.handleLostPointerCapture}
+                    onInputLevelPointerCancel={inputLevelControl.stopDrag}
+                    onInputLevelPointerDown={inputLevelControl.handlePointerDown}
+                    onInputLevelPointerMove={inputLevelControl.handlePointerMove}
+                    onOpenInputDialog={openInputDialog}
+                    onOpenOutputDialog={openOutputDialog}
+                    onStartControlDrag={startControlDrag}
+                    onMoveControlDrag={handleControlDragPointerMove}
+                    onStopControlDrag={stopControlDrag}
+                    onToggleTap={toggleTap}
+                    onWetDryKeyDown={wetDryControl.handleKeyDown}
+                    onWetDryLostPointerCapture={wetDryControl.handleLostPointerCapture}
+                    onWetDryPointerCancel={wetDryControl.stopDrag}
+                    onWetDryPointerDown={wetDryControl.handlePointerDown}
+                    onWetDryPointerMove={wetDryControl.handlePointerMove}
+                >
+                    {atlas && <div className={styles.feedbackPosition} style={{ "--knob-rotation": `${knobValueToCssRotation(feedback / MAX_FEEDBACK * 100)}deg` } as CSSProperties}>
+                        <div className={styles.knobControl} role="slider" aria-label="Feedback" tabIndex={0}
+                            aria-valuemin={0} aria-valuemax={MAX_FEEDBACK} aria-valuenow={feedback} aria-valuetext={`${feedback}%`}
+                            onKeyDown={feedbackControl.handleKeyDown} onPointerDown={feedbackControl.handlePointerDown}
+                            onPointerMove={feedbackControl.handlePointerMove} onPointerCancel={feedbackControl.stopDrag}
+                            onPointerUp={feedbackControl.stopDrag} onLostPointerCapture={feedbackControl.handleLostPointerCapture}>
+                            <span aria-hidden="true" className={styles.knob} />
+                        </div>
+                        <FeedbackStopButton disabled={!status.running} pressed={feedbackStopped} onChange={setFeedbackStopped} />
+                        <span className={styles.jackLabel}>Feedback</span>
+                        <output className={styles.feedbackValue}>{feedback}%</output>
+                    </div>}
+                    {atlas && !desktopLayout && <button className={styles.destinationsToggle} onClick={() => setMapOpen(true)} aria-haspopup="dialog">Destinations</button>}
+                </PedalSurface>
 
-            <PianoPanel
-                activeNotes={activeNotes}
-                disabled={!status.running}
-                maxOctave={SYNTH_MAX_OCTAVE}
-                minOctave={SYNTH_MIN_OCTAVE}
-                octave={synthOctave}
-                pianoVisible={pianoVisible}
-                wave={synthWave}
-                waves={SYNTH_WAVES}
-                onNoteOff={handleNoteOff}
-                onNoteOn={handleNoteOn}
-                onOctaveChange={updateSynthOctave}
-                onWaveChange={updateSynthWave}
-            />
+                <PianoPanel
+                    activeNotes={activeNotes}
+                    disabled={!status.running}
+                    maxOctave={SYNTH_MAX_OCTAVE}
+                    minOctave={SYNTH_MIN_OCTAVE}
+                    octave={synthOctave}
+                    pianoVisible={pianoVisible}
+                    wave={synthWave}
+                    waves={SYNTH_WAVES}
+                    onNoteOff={handleNoteOff}
+                    onNoteOn={handleNoteOn}
+                    onOctaveChange={updateSynthOctave}
+                    onWaveChange={updateSynthWave}
+                />
+            </div>
 
             {atlas && (desktopLayout || mapOpen) && (
                 <DestinationMap

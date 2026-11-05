@@ -55,9 +55,7 @@ export function PingRoute({ origin, destination, ping }: {
     }, [ping, route]);
 
     return <g ref={group} className={styles.pingRoute} data-destination={destination.code}>
-        {route.offsets.map(offset => <g key={offset} transform={`translate(${offset} 0)`}>
-            <path className={styles.pingTrace} data-trace d={route.path} pathLength="1" />
-            <path className={styles.pingStroke} d={route.path} pathLength="1" />
-        </g>)}
+        <path className={styles.pingTrace} data-trace d={route.path} pathLength="1" />
+        <path className={styles.pingStroke} d={route.path} pathLength="1" />
     </g>;
 }

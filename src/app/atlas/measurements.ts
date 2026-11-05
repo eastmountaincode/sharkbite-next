@@ -35,9 +35,10 @@ export async function measureDestination(
         }
         try {
             const started = performance.now();
-            // /ping must have no query string. no-store bypasses the browser cache.
+            // AWS /ping must have no query string. no-store bypasses the browser cache.
             // Opaque replies are expected: these endpoints do not expose CORS headers.
-            await fetch(`https://ec2.${destination.region}.amazonaws.com/ping`, {
+            const endpoint = "endpoint" in destination ? destination.endpoint : `https://ec2.${destination.region}.amazonaws.com/ping`;
+            await fetch(endpoint, {
                 mode: "no-cors",
                 credentials: "omit",
                 cache: "no-store",

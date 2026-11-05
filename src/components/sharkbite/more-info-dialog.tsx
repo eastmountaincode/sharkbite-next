@@ -46,7 +46,7 @@ export function MoreInfoDialog({ atlas = false, closeButtonRef, onClose }: MoreI
             Sharkbite is a website that turns the internet into a delay pedal.
           </p>
           {atlas ? <p>
-            Your browser measures round trips to AWS regions. Those live HTTPS timings set the delay;
+            Your browser measures round trips to servers in the cities shown. Those live HTTPS timings set the delay;
             your audio stays on your device. Connection setup is discarded, but HTTP processing still adds overhead.
             Feedback above 100% builds into saturated repeats.
             Map animations are slowed for readability; the millisecond readings and audio use measured timings.

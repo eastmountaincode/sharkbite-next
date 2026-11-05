@@ -1,8 +1,8 @@
 // Regional HTTPS endpoints, called directly by the listener's browser.
-// Locations represent AWS regions, not individual buildings or RIPE anchors.
+// Locations represent provider regions, not individual server buildings.
 export const destinations = [
     { code: "SFO", name: "San Francisco", lon: -122.4, lat: 37.8, region: "us-west-1" },
-    { code: "IAD", name: "Ashburn", lon: -77.5, lat: 39.0, region: "us-east-1" },
+    { code: "NYC", name: "New York", lon: -74.0, lat: 40.7, endpoint: "https://nyc3.digitaloceanspaces.com/" },
     { code: "SAO", name: "São Paulo", lon: -46.6, lat: -23.6, region: "sa-east-1" },
     { code: "LON", name: "London", lon: -0.1, lat: 51.5, region: "eu-west-2" },
     { code: "CPT", name: "Cape Town", lon: 18.4, lat: -33.9, region: "af-south-1" },

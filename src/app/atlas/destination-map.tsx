@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef } from "react";
+import { type CSSProperties, type FocusEvent, type PointerEvent, useEffect, useRef, useState } from "react";
 import { destinations, type Measurement, type Measurements, type Pings } from "./destinations";
 import type { MapLocation } from "./use-listener-location";
 import { PingRoute } from "./ping-route";
@@ -29,6 +29,20 @@ export function DestinationMap({ inline = false, selected, measurements, pings, 
 }) {
     const dialog = useRef<HTMLDialogElement>(null);
     const playback = usePingPlayback(pings, selected, origin !== null);
+    const [hovered, setHovered] = useState<string | null>(null);
+    const [focused, setFocused] = useState<string | null>(null);
+    const highlighted = hovered ?? focused;
+    const cityInteraction = (code: string) => ({
+        "data-highlighted": highlighted === code,
+        onPointerEnter: (event: PointerEvent<HTMLButtonElement>) => {
+            if (event.pointerType !== "touch") setHovered(code);
+        },
+        onPointerLeave: () => setHovered(current => current === code ? null : current),
+        onFocus: (event: FocusEvent<HTMLButtonElement>) => {
+            if (event.currentTarget.matches(":focus-visible")) setFocused(code);
+        },
+        onBlur: () => setFocused(current => current === code ? null : current),
+    });
 
     useEffect(() => {
         if (!inline) dialog.current?.showModal();
@@ -41,7 +55,7 @@ export function DestinationMap({ inline = false, selected, measurements, pings, 
                 {!inline && <button autoFocus onClick={() => dialog.current?.close()}>Close</button>}
             </header>
             <div className={styles.mapArea}>
-                <div className={styles.map}>
+                <div className={styles.map} data-highlighting={highlighted !== null}>
                     <svg viewBox="0 0 360 180" aria-hidden="true">
                         <image href="/world-land.svg" width="360" height="180" />
                         {origin && <>
@@ -55,6 +69,7 @@ export function DestinationMap({ inline = false, selected, measurements, pings, 
                         </>}
                     </svg>
                     {destinations.map(city => <button key={city.code} className={styles.pin}
+                        {...cityInteraction(city.code)}
                         aria-label={city.name} aria-pressed={selected.has(city.code)}
                         title={`${city.name}: ${formatMeasurement(measurements[city.code])}`}
                         style={{
@@ -74,7 +89,7 @@ export function DestinationMap({ inline = false, selected, measurements, pings, 
                 {destinations.map(city => {
                     const active = selected.has(city.code);
                     const measurement = measurements[city.code];
-                    return <button key={city.code} aria-pressed={active} onClick={() => select(city.code, !active)}>
+                    return <button key={city.code} {...cityInteraction(city.code)} aria-pressed={active} onClick={() => select(city.code, !active)}>
                         <span>{city.name}</span>
                         <small>{formatMeasurement(measurement)}</small>
                     </button>;

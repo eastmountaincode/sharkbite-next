@@ -15,6 +15,10 @@
   padding: var(--stage-padding);
 }
 
+.performanceGroup {
+    display: contents;
+}
+
 .pedalStage {
   align-items: center;
   display: flex;
@@ -1055,6 +1059,29 @@
     .shell[data-atlas="true"] .pedalCanvas,
     .shell[data-atlas="true"][data-piano-open="true"] .pedalCanvas {
         width: min(100%, calc(var(--atlas-pedal-height) * 1.4));
+    }
+
+    .shell[data-atlas="true"][data-piano-open="true"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .shell[data-atlas="true"] .performanceGroup {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(24px, 4vw, 48px);
+        width: 100%;
+    }
+
+    .shell[data-atlas="true"] .pedalStage {
+        flex: 0 1 calc(var(--atlas-pedal-height) * 1.4);
+        min-width: 0;
+        width: auto;
+    }
+
+    .shell[data-atlas="true"] .pianoPanel {
+        flex: 0 1 420px;
+        min-width: 0;
     }
 }
 
