@@ -72,19 +72,18 @@
 }
 .pin::after {
     content: "";
+    box-sizing: border-box;
     width: 12px;
     height: 12px;
     border-radius: 50%;
     border: 1.5px solid var(--line);
     background: var(--delay-color, var(--panel));
-    transition: opacity 100ms ease, transform 100ms ease;
 }
 .pin[aria-pressed=true]::after {
     outline: 2px solid var(--line);
     outline-offset: 2px;
 }
-.map[data-highlighting=true] .pin:not([data-highlighted=true])::after { opacity: 0.4; }
-.pin[data-highlighted=true]::after { transform: scale(1.3); }
+.pin[data-highlighted=true]::after { border-width: 2.5px; }
 .pin:focus-visible, .cities button:focus-visible { outline: none; }
 .cities {
     display: grid;

@@ -55,7 +55,7 @@ export function DestinationMap({ inline = false, selected, measurements, pings, 
                 {!inline && <button autoFocus onClick={() => dialog.current?.close()}>Close</button>}
             </header>
             <div className={styles.mapArea}>
-                <div className={styles.map} data-highlighting={highlighted !== null}>
+                <div className={styles.map}>
                     <svg viewBox="0 0 360 180" aria-hidden="true">
                         <image href="/world-land.svg" width="360" height="180" />
                         {origin && <>
