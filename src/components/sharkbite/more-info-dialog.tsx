@@ -49,7 +49,6 @@ export function MoreInfoDialog({ atlas = false, closeButtonRef, onClose }: MoreI
             Your browser measures round trips to servers in the cities shown. Those live HTTPS timings set the delay;
             your audio stays on your device. Connection setup is discarded, but HTTP processing still adds overhead.
             Feedback above 100% builds into saturated repeats.
-            Map animations are slowed for readability; the millisecond readings and audio use measured timings.
           </p> : <p>
             Audio signal is sent to DigitalOcean servers in different cities, and back to you. Depending on how far you
             are away from these servers, you will hear a different delay effect; the delay time comes from the length of

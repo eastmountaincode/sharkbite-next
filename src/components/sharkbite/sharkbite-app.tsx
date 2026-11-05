@@ -103,7 +103,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
         setInputMonitorLevel((currentLevel) => (Math.abs(currentLevel - level) < 0.015 ? currentLevel : level));
     }, []);
 
-    const { measurements, pings } = useMeasurements(selected, status.running, atlas);
+    const measurements = useMeasurements(selected, status.running, atlas);
     const listenerLocation = useListenerLocation(atlas);
 
     useEffect(() => {
@@ -418,7 +418,6 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                     inline={desktopLayout}
                     selected={selected}
                     measurements={measurements}
-                    pings={pings}
                     origin={listenerLocation}
                     select={selectCity}
                     onClose={() => setMapOpen(false)}

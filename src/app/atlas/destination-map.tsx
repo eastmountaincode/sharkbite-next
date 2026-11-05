@@ -1,8 +1,7 @@
 import { type CSSProperties, type FocusEvent, type PointerEvent, useEffect, useRef, useState } from "react";
-import { destinations, type Measurement, type Measurements, type Pings } from "./destinations";
+import { destinations, type Measurement, type Measurements } from "./destinations";
 import type { MapLocation } from "./use-listener-location";
-import { PingRoute } from "./ping-route";
-import { usePingPlayback } from "./use-ping-playback";
+import { mapRoute } from "./map-route";
 import styles from "./atlas.module.css";
 
 function formatMeasurement(measurement?: Measurement) {
@@ -18,17 +17,15 @@ function delayColor(measurement?: Measurement) {
     return `rgb(${short.map((channel, index) => Math.round(channel + (long[index] - channel) * amount)).join(" ")})`;
 }
 
-export function DestinationMap({ inline = false, selected, measurements, pings, origin, select, onClose }: {
+export function DestinationMap({ inline = false, selected, measurements, origin, select, onClose }: {
     inline?: boolean;
     selected: ReadonlySet<string>;
     measurements: Measurements;
-    pings: Pings;
     origin: MapLocation | null;
     select: (code: string, enable: boolean) => void;
     onClose: () => void;
 }) {
     const dialog = useRef<HTMLDialogElement>(null);
-    const playback = usePingPlayback(pings, selected, origin !== null);
     const [hovered, setHovered] = useState<string | null>(null);
     const [focused, setFocused] = useState<string | null>(null);
     const highlighted = hovered ?? focused;
@@ -60,8 +57,8 @@ export function DestinationMap({ inline = false, selected, measurements, pings, 
                         <image href="/world-land.svg" width="360" height="180" />
                         {origin && <>
                             {destinations.filter(city => selected.has(city.code)).map(city => (
-                                <PingRoute key={city.code} origin={origin} destination={city}
-                                    ping={playback[city.code]} />
+                                <path key={city.code} className={styles.connection} data-destination={city.code}
+                                    d={mapRoute(origin, city).path} />
                             ))}
                             <circle className={styles.origin} cx={origin.lon + 180} cy={90 - origin.lat} r="2.2">
                                 <title>Your approximate location</title>

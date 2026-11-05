@@ -124,7 +124,6 @@ let clock = 0;
 let request = 0;
 const controller = new AbortController();
 const published = [];
-const roundTrips = [];
 try {
     Object.defineProperty(globalThis, "performance", { configurable: true, value: { now: () => clock } });
     globalThis.setTimeout = (fn, ms, ...args) => originalTimeout(fn, Math.min(ms, 1), ...args);
@@ -141,9 +140,8 @@ try {
     await measureDestination(destinations.find(city => city.code === "TYO"), controller.signal, result => {
         published.push(result);
         if (result.unavailable) controller.abort();
-    }, { onRoundTrip: ms => roundTrips.push(ms) });
+    });
     assert.deepEqual(published[0], { ms: null, unavailable: false });
-    assert.deepEqual(roundTrips, [120, 200, 100], "Animations must receive actual round trips, without connection warmup or median filtering");
     assert.equal(published[1].ms, 120, "Connection warmup must not become the delay");
     assert.deepEqual(published.at(-1), { ms: 120, unavailable: true }, "Network loss must preserve the last measured delay");
     const requestsAfterAbort = request;

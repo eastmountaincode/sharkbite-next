@@ -21,7 +21,7 @@ export async function measureDestination(
     destination: Destination,
     signal: AbortSignal,
     publish: (measurement: Measurement) => void,
-    options: { once?: boolean; initial?: Measurement; onRoundTrip?: (ms: number) => void } = {},
+    options: { once?: boolean; initial?: Measurement } = {},
 ) {
     const samples: number[] = [];
     let warmed = false;
@@ -54,7 +54,6 @@ export async function measureDestination(
                 // Discard DNS/TLS connection setup before using the first delay.
                 warmed = true;
             } else {
-                options.onRoundTrip?.(ms);
                 samples.push(ms);
                 if (samples.length > 3) samples.shift();
                 const sorted = [...samples].sort((a, b) => a - b);
