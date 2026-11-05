@@ -31,7 +31,6 @@ export function createAtlasReturns(ctx: BaseAudioContext, source: GainNode, wet:
             const ms = measurements[code]?.ms;
             return selected.has(code) && ms != null && Number.isFinite(ms) && ms > 0 && ms < MAX_DELAY_MS;
         };
-        const count = destinations.filter(city => ready(city.code)).length;
         for (const tap of taps) {
             const on = ready(tap.city.code);
             const ms = measurements[tap.city.code]?.ms;
@@ -53,7 +52,8 @@ export function createAtlasReturns(ctx: BaseAudioContext, source: GainNode, wet:
             }
             tap.send.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.008);
             tap.feedback.gain.setTargetAtTime(on && !feedbackStopped ? Math.max(0, Math.min(MAX_FEEDBACK, feedback)) / 100 : 0, ctx.currentTime, 0.008);
-            tap.level.gain.setTargetAtTime(on ? 1 / count : 0, ctx.currentTime, 0.008);
+            // Each return keeps its level; the master output handles overlapping peaks.
+            tap.level.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.008);
         }
     };
 }

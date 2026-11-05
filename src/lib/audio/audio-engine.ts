@@ -1,5 +1,6 @@
 import { createAudioOutputRouter } from "./audioOutputRouter";
 import { createMonoSourceBus } from "./mono-source-bus";
+import { createOutputPeakGuard } from "./output-peak-guard";
 import type { AudioOutputChannel } from "./audioOutput";
 import { DEFAULT_TAP_SETTINGS, type FrameSizeMs, type TapConfig, type TapId } from "@/config/taps";
 import { buildTapSocketUrls } from "@/lib/audio/connection-url";
@@ -180,7 +181,13 @@ export class AudioEngine {
     this.dryGain.connect(this.masterGain);
     this.wetGain.connect(this.masterGain);
     this.masterGain.connect(this.masterLimiter);
-    this.masterLimiter.connect(this.outputRouter.input);
+    if (this.localReturns) {
+        const guard = createOutputPeakGuard(this.ctx);
+        this.masterLimiter.connect(guard.input);
+        guard.output.connect(this.outputRouter.input);
+    } else {
+        this.masterLimiter.connect(this.outputRouter.input);
+    }
     this.synthGain.connect(this.sourceBus);
 
     if (this.localReturns) {

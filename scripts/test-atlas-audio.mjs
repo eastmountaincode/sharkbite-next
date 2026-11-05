@@ -4,19 +4,26 @@ import ts from "typescript";
 import webAudioEngine from "web-audio-engine";
 
 const encode = code => `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
-const compile = file => ts.transpileModule(fs.readFileSync(new URL(`../src/app/atlas/${file}.ts`, import.meta.url), "utf8"), {
+const compile = (file, directory = "../src/app/atlas/") => ts.transpileModule(fs.readFileSync(new URL(`${directory}${file}.ts`, import.meta.url), "utf8"), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
 }).outputText;
 const config = encode(compile("destinations"));
 const { destinations } = await import(config);
 const { createAtlasReturns } = await import(encode(compile("routes").replace('"./destinations"', JSON.stringify(config))));
+const { createOutputPeakGuard } = await import(encode(compile("output-peak-guard", "../src/lib/audio/")));
 const rate = 48000;
 
-async function render(selected, feedback, measurements, duration = 1) {
+async function render(selected, feedback, measurements, duration = 1, guardOutput = false) {
     const ctx = new webAudioEngine.OfflineAudioContext(1, rate * duration, rate);
     const source = ctx.createGain();
     const wet = ctx.createGain();
-    wet.connect(ctx.destination);
+    if (guardOutput) {
+        const guard = createOutputPeakGuard(ctx);
+        wet.connect(guard.input);
+        guard.output.connect(ctx.destination);
+    } else {
+        wet.connect(ctx.destination);
+    }
     createAtlasReturns(ctx, source, wet)(new Set(selected), feedback, measurements);
     const pulse = ctx.createBufferSource();
     pulse.buffer = ctx.createBuffer(1, 480, rate);
@@ -35,6 +42,84 @@ for (const city of destinations) {
     assert(peak(audio.slice(0.28 * rate)) < 1e-6, `${city.code} repeats at zero feedback`);
 }
 console.log(`PASS: all ${destinations.length} destinations echo at the measured time`);
+
+for (const count of [1, 2, 4, destinations.length]) {
+    const selected = destinations.slice(0, count);
+    const measurements = Object.fromEntries(selected.map((city, index) => [
+        city.code, { ms: 150 + index * 50, unavailable: false },
+    ]));
+    const audio = await render(selected.map(city => city.code), 0, measurements);
+    selected.forEach((city, index) => {
+        assert(Math.abs(windowPeak(audio, 0.25 + index * 0.05) - 0.1) < 1e-5,
+            `${city.code} must keep its return level with ${count} destinations selected`);
+    });
+}
+console.log("PASS: individual echo levels stay constant with 1, 2, 4, and 12 destinations");
+
+{
+    const ctx = new webAudioEngine.OfflineAudioContext(1, rate, rate);
+    const source = ctx.createBufferSource();
+    source.buffer = ctx.createBuffer(1, rate, rate);
+    const input = source.buffer.getChannelData(0);
+    for (let i = 0; i < input.length; i++) {
+        const amplitude = i < rate / 2 ? 0.75 : 16;
+        input[i] = amplitude * Math.sin(2 * Math.PI * 220 * i / rate);
+    }
+    const guard = createOutputPeakGuard(ctx);
+    source.connect(guard.input);
+    guard.output.connect(ctx.destination);
+    source.start();
+    const output = (await ctx.startRendering()).getChannelData(0);
+    for (let i = 0; i < rate / 2; i++) {
+        assert(Math.abs(output[i] - input[i]) < 1e-6,
+            "The output guard must preserve normal audio without changing gain or timing");
+    }
+    assert(output.every(Number.isFinite) && peak(output) <= 0.980001,
+        "Both positive and negative output peaks must stay below full scale");
+    console.log("PASS: output guard preserves normal audio and bounds extreme peaks");
+}
+
+{
+    const selected = destinations.map(city => city.code);
+    const measurements = Object.fromEntries(selected.map(code => [code, { ms: 125, unavailable: false }]));
+    const audio = await render(selected, 150, measurements, 6, true);
+    assert(audio.every(Number.isFinite) && peak(audio) <= 0.980001,
+        "Twelve coincident returns at 150% feedback must stay below full scale");
+    assert(peak(audio.slice(5 * rate)) > 0.8, "Peak protection must preserve the feedback tail");
+    console.log("PASS: 12 overlapping returns at 150% feedback remain bounded and audible");
+}
+
+{
+    const ctx = new webAudioEngine.OfflineAudioContext(1, rate * 2, rate);
+    const source = ctx.createGain();
+    const wet = ctx.createGain();
+    wet.connect(ctx.destination);
+    const update = createAtlasReturns(ctx, source, wet);
+    const measurements = { TYO: { ms: 125, unavailable: false }, SIN: { ms: 375, unavailable: false } };
+    update(new Set(["TYO"]), 0, measurements);
+    for (const at of [0.1, 0.7, 1.3]) {
+        const pulse = ctx.createBufferSource();
+        pulse.buffer = ctx.createBuffer(1, 480, rate);
+        pulse.buffer.getChannelData(0).fill(0.1);
+        pulse.connect(source);
+        pulse.start(at);
+    }
+    const add = ctx.suspend(0.5);
+    const rendered = ctx.startRendering();
+    await add;
+    update(new Set(["TYO", "SIN"]), 0, measurements);
+    const remove = ctx.suspend(1.2);
+    await ctx.resume();
+    await remove;
+    update(new Set(["TYO"]), 0, measurements);
+    await ctx.resume();
+    const audio = (await rendered).getChannelData(0);
+    for (const at of [0.225, 0.825, 1.075, 1.425]) {
+        assert(Math.abs(windowPeak(audio, at) - 0.1) < 1e-5,
+            "Adding or removing another destination must not turn down an existing echo");
+    }
+    console.log("PASS: adding and removing a destination preserves existing echo levels");
+}
 
 const none = await render(["TYO"], 150, {});
 assert.equal(peak(none), 0, "Unmeasured destinations must not use invented timings");
