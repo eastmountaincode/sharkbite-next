@@ -2,6 +2,7 @@ import { type CSSProperties, useEffect, useRef } from "react";
 import { destinations, type Measurement, type Measurements, type Pings } from "./destinations";
 import type { MapLocation } from "./use-listener-location";
 import { PingRoute } from "./ping-route";
+import { usePingPlayback } from "./use-ping-playback";
 import styles from "./atlas.module.css";
 
 function formatMeasurement(measurement?: Measurement) {
@@ -27,6 +28,7 @@ export function DestinationMap({ inline = false, selected, measurements, pings, 
     onClose: () => void;
 }) {
     const dialog = useRef<HTMLDialogElement>(null);
+    const playback = usePingPlayback(pings, selected, origin !== null);
 
     useEffect(() => {
         if (!inline) dialog.current?.showModal();
@@ -45,7 +47,7 @@ export function DestinationMap({ inline = false, selected, measurements, pings, 
                         {origin && <>
                             {destinations.filter(city => selected.has(city.code)).map(city => (
                                 <PingRoute key={city.code} origin={origin} destination={city}
-                                    ping={pings[city.code]} color={delayColor(measurements[city.code])} />
+                                    ping={playback[city.code]} />
                             ))}
                             <circle className={styles.origin} cx={origin.lon + 180} cy={90 - origin.lat} r="2.2">
                                 <title>Your approximate location</title>
