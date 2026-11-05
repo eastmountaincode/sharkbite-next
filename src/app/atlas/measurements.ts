@@ -27,7 +27,8 @@ export async function measureDestination(
     let warmed = false;
     let failures = 0;
     let last: number | null = options.initial?.ms ?? null;
-    publish(options.initial ?? { ms: null, unavailable: false });
+    // A saved reading stays a snapshot until this session returns a fresh sample.
+    publish({ ...(options.initial ?? { ms: null, unavailable: false }), live: false });
     while (!signal.aborted) {
         if (typeof document !== "undefined" && document.hidden) {
             await wait(15000, signal);
@@ -59,7 +60,7 @@ export async function measureDestination(
                 const sorted = [...samples].sort((a, b) => a - b);
                 const middle = Math.floor(sorted.length / 2);
                 last = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-                publish({ ms: last, unavailable: false });
+                publish({ ms: last, unavailable: false, live: !options.once });
                 if (options.once && samples.length === 3) return;
             }
             // Aim for four requests per second, including the round trip.
@@ -68,7 +69,7 @@ export async function measureDestination(
         } catch {
             if (signal.aborted) return;
             // A transient outage keeps the last measured delay playing.
-            publish({ ms: last, unavailable: true });
+            publish({ ms: last, unavailable: true, live: false });
             if (options.once) return;
             warmed = false;
             samples.length = 0;

@@ -141,9 +141,10 @@ try {
         published.push(result);
         if (result.unavailable) controller.abort();
     });
-    assert.deepEqual(published[0], { ms: null, unavailable: false });
+    assert.deepEqual(published[0], { ms: null, unavailable: false, live: false });
     assert.equal(published[1].ms, 120, "Connection warmup must not become the delay");
-    assert.deepEqual(published.at(-1), { ms: 120, unavailable: true }, "Network loss must preserve the last measured delay");
+    assert.equal(published[1].live, true, "Live state must begin with the first warmed continuous sample");
+    assert.deepEqual(published.at(-1), { ms: 120, unavailable: true, live: false }, "Network loss must preserve the delay without calling it live");
     const requestsAfterAbort = request;
     await measureDestination(destinations[0], controller.signal, () => {});
     assert.equal(request, requestsAfterAbort, "Aborted selections must not make requests");
@@ -154,7 +155,8 @@ try {
     await measureDestination(destinations.find(city => city.code === "TYO"), new AbortController().signal,
         measurement => initialReadings.push(measurement), { once: true });
     assert.equal(request, 4, "Initial readings must stop after one warmup and three samples");
-    assert.deepEqual(initialReadings.at(-1), { ms: 120, unavailable: false }, "Initial reading must use the median of warmed samples");
+    assert.deepEqual(initialReadings.at(-1), { ms: 120, unavailable: false, live: false }, "Initial reading must use the median of warmed samples");
+    assert(initialReadings.every(reading => !reading.live), "Profiling must never claim to be live");
 
     request = 0;
     const resumedReadings = [];
@@ -162,6 +164,17 @@ try {
         measurement => resumedReadings.push(measurement), { once: true, initial: initialReadings.at(-1) });
     assert.deepEqual(resumedReadings[0], initialReadings.at(-1), "Selecting a measured destination must preserve its reading during warmup");
     assert(resumedReadings.every(measurement => measurement.ms !== null), "Warmup must not erase an existing delay");
+
+    request = 0;
+    const liveController = new AbortController();
+    const liveReadings = [];
+    await measureDestination(destinations.find(city => city.code === "TYO"), liveController.signal, reading => {
+        liveReadings.push(reading);
+        if (reading.live) liveController.abort();
+    }, { initial: { ms: 120, unavailable: false, live: true } });
+    assert.equal(liveReadings[0].live, false, "Reselecting must not label a saved live reading as fresh");
+    assert.equal(liveReadings.at(-1).live, true, "A fresh continuous sample must restore live state");
+    assert.equal(request, 2, "Live state must wait for warmup and a fresh measured reply");
 
     request = 0;
     globalThis.fetch = async () => {
@@ -172,7 +185,7 @@ try {
     await measureDestination(destinations[0], new AbortController().signal,
         measurement => failedReadings.push(measurement), { once: true, initial: { ms: 120, unavailable: false } });
     assert.equal(request, 1, "Initial failures must finish instead of retrying indefinitely");
-    assert.deepEqual(failedReadings.at(-1), { ms: 120, unavailable: true });
+    assert.deepEqual(failedReadings.at(-1), { ms: 120, unavailable: true, live: false });
     console.log("PASS: bounded initial sampling, warmup preserves prior readings, and initial failures finish");
 
     const waits = [];

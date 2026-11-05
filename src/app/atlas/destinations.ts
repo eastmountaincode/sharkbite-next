@@ -16,7 +16,7 @@ export const destinations = [
 ] as const;
 
 export type Destination = typeof destinations[number];
-export type Measurement = { ms: number | null; unavailable: boolean };
+export type Measurement = { ms: number | null; unavailable: boolean; live?: boolean };
 export type Measurements = Partial<Record<string, Measurement>>;
 export const MAX_FEEDBACK = 150;
 export const MAX_DELAY_MS = 3000;

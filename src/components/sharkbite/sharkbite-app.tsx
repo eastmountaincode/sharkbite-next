@@ -402,6 +402,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                 <DestinationMap
                     selected={selected}
                     measurements={measurements}
+                    running={status.running}
                     origin={listenerLocation}
                     select={selectCity}
                 />

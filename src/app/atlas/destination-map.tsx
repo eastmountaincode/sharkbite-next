@@ -26,15 +26,27 @@ function delayColor(measurement?: Measurement) {
     return `rgb(${short.map((channel, index) => Math.round(channel + (long[index] - channel) * amount)).join(" ")})`;
 }
 
-export function DestinationMap({ selected, measurements, origin, select }: {
+export function DestinationMap({ selected, measurements, running, origin, select }: {
     selected: ReadonlySet<string>;
     measurements: Measurements;
+    running: boolean;
     origin: MapLocation | null;
     select: (code: string, enable: boolean) => void;
 }) {
     const [hovered, setHovered] = useState<string | null>(null);
     const [focused, setFocused] = useState<string | null>(null);
     const highlighted = hovered ?? focused;
+    const isLive = (code: string) => {
+        const measurement = measurements[code];
+        return running && selected.has(code) && measurement?.live === true &&
+            measurement.ms != null && !measurement.unavailable;
+    };
+    const measurementDescription = (code: string) => {
+        const measurement = measurements[code];
+        const reading = formatMeasurement(measurement);
+        if (measurement?.ms == null) return reading;
+        return `${isLive(code) ? "Live reading" : "Last reading"}: ${reading}`;
+    };
     const cityInteraction = (code: string) => ({
         "data-highlighted": highlighted === code,
         onPointerEnter: (event: PointerEvent<HTMLButtonElement>) => {
@@ -69,7 +81,8 @@ export function DestinationMap({ selected, measurements, origin, select }: {
                     {destinations.map(city => <button key={city.code} className={styles.pin}
                         {...cityInteraction(city.code)}
                         aria-label={city.name} aria-pressed={selected.has(city.code)}
-                        title={`${city.name}: ${formatMeasurement(measurements[city.code])}`}
+                        aria-describedby={`measurement-${city.code}`}
+                        title={`${city.name}: ${measurementDescription(city.code)}`}
                         style={{
                             left: `${(city.lon + 180) / 360 * 100}%`,
                             top: `${(90 - city.lat) / 180 * 100}%`,
@@ -87,10 +100,16 @@ export function DestinationMap({ selected, measurements, origin, select }: {
                 {gridDestinations.map(city => {
                     const active = selected.has(city.code);
                     const measurement = measurements[city.code];
+                    const live = isLive(city.code);
+                    const description = measurementDescription(city.code);
                     return <button key={city.code} {...cityInteraction(city.code)} aria-pressed={active}
+                        aria-label={`${city.name}, ${description}`}
                         onClick={() => select(city.code, !active)}>
                         <span>{city.name}</span>
-                        <small>{formatMeasurement(measurement)}</small>
+                        <small id={`measurement-${city.code}`} data-live={live} title={description}>
+                            {formatMeasurement(measurement)}
+                            {live && <span className={styles.liveLabel}>live</span>}
+                        </small>
                     </button>;
                 })}
             </div>
