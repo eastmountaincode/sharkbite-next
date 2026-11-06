@@ -3,11 +3,12 @@ import type { RefObject } from "react";
 import styles from "./sharkbite.module.css";
 
 type MoreInfoDialogProps = {
+    atlas?: boolean;
   closeButtonRef: RefObject<HTMLButtonElement | null>;
   onClose: () => void;
 };
 
-export function MoreInfoDialog({ closeButtonRef, onClose }: MoreInfoDialogProps) {
+export function MoreInfoDialog({ atlas = false, closeButtonRef, onClose }: MoreInfoDialogProps) {
   return (
     <div
       className={`${styles.inputDialogBackdrop} ${styles.infoDialogBackdrop}`}
@@ -44,11 +45,16 @@ export function MoreInfoDialog({ closeButtonRef, onClose }: MoreInfoDialogProps)
             Usually we think about latency as something to be avoided, but what if we harnessed it for its musicality?
             Sharkbite is a website that turns the internet into a delay pedal.
           </p>
-          <p>
+          {atlas ? <p>
+            Your browser measures round trips to servers in the cities shown. Those live HTTPS timings set the delay;
+            your audio stays on your device. Connection setup is discarded, but HTTP processing still adds overhead.
+            Bandwidth limits a simulated audio stream for each city, where late pings can make more chunks drop out.
+            Feedback above 100% builds into saturated repeats.
+          </p> : <p>
             Audio signal is sent to DigitalOcean servers in different cities, and back to you. Depending on how far you
             are away from these servers, you will hear a different delay effect; the delay time comes from the length of
             the trip itself.
-          </p>
+          </p>}
           <p>
             Conceptually, the internet is shrouded in metaphors of immateriality (&quot;the cloud&quot;, etc.), but in
             reality is a physical thing made possible by server farms and {" "}

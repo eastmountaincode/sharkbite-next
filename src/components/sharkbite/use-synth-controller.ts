@@ -15,7 +15,7 @@ type UseSynthControllerParams = {
 };
 
 export function useSynthController({ engineRef, getEngine }: UseSynthControllerParams) {
-  const [pianoOpen, setPianoOpen] = useState(false);
+    const [pianoOpen, setPianoOpen] = useState(true);
   const [synthWave, setSynthWave] = useState<OscillatorType>("triangle");
   const [synthOctave, setSynthOctave] = useState(SYNTH_DEFAULT_OCTAVE);
   const [activeNotes, setActiveNotes] = useState<Set<number>>(() => new Set());
@@ -27,18 +27,6 @@ export function useSynthController({ engineRef, getEngine }: UseSynthControllerP
       return new Set();
     });
   }, [engineRef]);
-
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 760px)");
-    const updateCompactLayout = () => {
-      setPianoOpen(media.matches);
-    };
-
-    updateCompactLayout();
-    media.addEventListener("change", updateCompactLayout);
-
-    return () => media.removeEventListener("change", updateCompactLayout);
-  }, []);
 
   useEffect(() => {
     engineRef.current?.setSynth(synthWave, SYNTH_LEVEL);

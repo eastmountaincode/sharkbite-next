@@ -62,7 +62,7 @@ export function OutputSourceDialog({
 
         <div className={styles.inputDialogBody}>
           <label className={styles.inputControl}>
-            <span>Audio device</span>
+            <span className={styles.srOnly}>Audio device</span>
             <select value={outputDeviceId} onChange={(event) => onUpdateOutputDevice(event.target.value)}>
               <option value={defaultOutputDeviceId}>System Default</option>
               {outputDeviceId && !audioOutputs.some((device) => device.deviceId === outputDeviceId) ? (
@@ -76,7 +76,7 @@ export function OutputSourceDialog({
             </select>
           </label>
           {pairs.length > 1 || unavailablePair ? <label className={styles.inputControl}>
-            <span>Output channels</span>
+            <span className={styles.srOnly}>Output channels</span>
             <select value={outputChannel} onChange={(event) => onUpdateOutputChannel(event.target.value as AudioOutputChannel)}>
               {unavailablePair ? <option value={outputChannel} disabled>{AUDIO_OUTPUT_CHANNELS.find((pair) => pair.value === outputChannel)?.label} (unavailable)</option> : null}
               {(pairs.length ? pairs : AUDIO_OUTPUT_CHANNELS.slice(0, 1)).map((pair) => (

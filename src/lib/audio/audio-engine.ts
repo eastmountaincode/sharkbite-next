@@ -1,5 +1,6 @@
 import { createAudioOutputRouter } from "./audioOutputRouter";
 import { createMonoSourceBus } from "./mono-source-bus";
+import { createOutputPeakGuard } from "./output-peak-guard";
 import type { AudioOutputChannel } from "./audioOutput";
 import { DEFAULT_TAP_SETTINGS, type FrameSizeMs, type TapConfig, type TapId } from "@/config/taps";
 import { buildTapSocketUrls } from "@/lib/audio/connection-url";
@@ -41,6 +42,7 @@ type TapRuntime = TapConfig & {
 
 type AudioEngineOptions = {
   taps: TapConfig[];
+  localReturns?: (ctx: AudioContext, source: GainNode, wet: GainNode) => void | Promise<void>;
   onStatus: (status: EngineStatus) => void;
   onTapEnabledChange: (id: TapId, enabled: boolean) => void;
   onTapMetrics: (id: TapId, metrics: TapMetricsUpdate) => void;
@@ -61,6 +63,7 @@ export type StartOptions = {
 };
 
 export class AudioEngine {
+  private readonly localReturns: AudioEngineOptions["localReturns"];
   private readonly taps = new Map<TapId, TapRuntime>();
   private readonly onStatus: AudioEngineOptions["onStatus"];
   private readonly onTapEnabledChange: AudioEngineOptions["onTapEnabledChange"];
@@ -101,6 +104,7 @@ export class AudioEngine {
   micEnabled = false;
 
   constructor(options: AudioEngineOptions) {
+    this.localReturns = options.localReturns;
     this.onStatus = options.onStatus;
     this.onTapEnabledChange = options.onTapEnabledChange;
     this.onTapMetrics = options.onTapMetrics;
@@ -156,11 +160,6 @@ export class AudioEngine {
     this.synthLevel = options.synthLevel;
     this.frameLength = Math.round(this.ctx.sampleRate * this.frameMs / 1000);
 
-    await Promise.all([
-      this.ctx.audioWorklet.addModule("/worklets/capture-processor.js?v=3"),
-      this.ctx.audioWorklet.addModule("/worklets/player-processor.js?v=3"),
-    ]);
-
     this.dryGain = this.ctx.createGain();
     this.wetGain = this.ctx.createGain();
     this.masterGain = this.ctx.createGain();
@@ -168,7 +167,6 @@ export class AudioEngine {
     this.sourceBus = createMonoSourceBus(this.ctx);
     this.synthGain = this.ctx.createGain();
     this.analyser = this.ctx.createAnalyser();
-    this.captureNode = new AudioWorkletNode(this.ctx, "sharkbite-capture");
 
     this.sourceBus.gain.value = 1;
     this.synthGain.gain.value = SYNTH_BUS_GAIN;
@@ -178,26 +176,40 @@ export class AudioEngine {
     this.masterLimiter.attack.value = 0.003;
     this.masterLimiter.release.value = 0.16;
     this.analyser.fftSize = 512;
-    this.captureNode.port.postMessage({ frameLength: this.frameLength });
-    this.captureNode.port.onmessage = (event: MessageEvent<{ frame: Float32Array; capturedAt: number }>) => {
-      // A main-thread scheduling burst must not delete parts of the input.
-      if (!this.ctx || this.ctx.state !== "running") return;
-      this.sendFrameToEnabledTaps(event.data.frame);
-    };
-
     this.sourceBus.connect(this.dryGain);
     this.sourceBus.connect(this.analyser);
-    this.sourceBus.connect(this.captureNode);
     this.dryGain.connect(this.masterGain);
     this.wetGain.connect(this.masterGain);
     this.masterGain.connect(this.masterLimiter);
-    this.masterLimiter.connect(this.outputRouter.input);
+    if (this.localReturns) {
+        const guard = createOutputPeakGuard(this.ctx);
+        this.masterLimiter.connect(guard.input);
+        guard.output.connect(this.outputRouter.input);
+    } else {
+        this.masterLimiter.connect(this.outputRouter.input);
+    }
     this.synthGain.connect(this.sourceBus);
 
-    const captureSink = this.ctx.createGain();
-    captureSink.gain.value = 0;
-    this.captureNode.connect(captureSink);
-    captureSink.connect(this.outputRouter.input);
+    if (this.localReturns) {
+        await this.localReturns(this.ctx, this.sourceBus, this.wetGain);
+    } else {
+        await Promise.all([
+          this.ctx.audioWorklet.addModule("/worklets/capture-processor.js?v=3"),
+          this.ctx.audioWorklet.addModule("/worklets/player-processor.js?v=3"),
+        ]);
+        this.captureNode = new AudioWorkletNode(this.ctx, "sharkbite-capture");
+        this.captureNode.port.postMessage({ frameLength: this.frameLength });
+        this.captureNode.port.onmessage = (event: MessageEvent<{ frame: Float32Array; capturedAt: number }>) => {
+          // A main-thread scheduling burst must not delete parts of the input.
+          if (!this.ctx || this.ctx.state !== "running") return;
+          this.sendFrameToEnabledTaps(event.data.frame);
+        };
+        this.sourceBus.connect(this.captureNode);
+        const captureSink = this.ctx.createGain();
+        captureSink.gain.value = 0;
+        this.captureNode.connect(captureSink);
+        captureSink.connect(this.outputRouter.input);
+    }
 
     this.micGain = this.ctx.createGain();
     this.micGain.gain.value = options.inputLevel;

@@ -9,6 +9,8 @@ import {
 } from "react";
 import { TAPS, type TapId } from "@/config/taps";
 import { AudioEngine } from "@/lib/audio/audio-engine";
+import { AtlasKnob } from "./atlas-knob";
+import { FeedbackStopButton } from "./feedback-stop-button";
 import { InputAreaHelperPanel } from "./input-area-helper-panel";
 import { InputSourceDialog } from "./input-source-dialog";
 import { MoreInfoDialog } from "./more-info-dialog";
@@ -35,6 +37,11 @@ import {
     SYNTH_WAVES,
 } from "./sharkbite-model";
 import styles from "./sharkbite.module.css";
+import { createAtlasReturns } from "@/app/atlas/routes";
+import { MAX_FEEDBACK } from "@/app/atlas/destinations";
+import { useMeasurements } from "@/app/atlas/use-measurements";
+import { useListenerLocation } from "@/app/atlas/use-listener-location";
+import { DestinationMap } from "@/app/atlas/destination-map";
 import { StartScreen } from "./start-screen";
 import { TopControls } from "./top-controls";
 import { useAudioInputs } from "./use-audio-inputs";
@@ -43,14 +50,35 @@ import { useKnobControl } from "./use-knob-control";
 import { usePedalEditor } from "./use-pedal-editor";
 import { useSynthController } from "./use-synth-controller";
 
-export function SharkbiteApp() {
+// The finite settings cover 320–800 kbps in 8 kbps steps, followed by Open.
+const OPEN_BANDWIDTH_STEP = 61;
+
+export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
+    const [selected, setSelected] = useState(new Set(["TYO"]));
+    const [feedback, setFeedback] = useState(99);
+    const [feedbackStopped, setFeedbackStopped] = useState(false);
+    const updateReturns = useRef<ReturnType<typeof createAtlasReturns> | null>(null);
+    const [bandwidthStep, setBandwidthStep] = useState(OPEN_BANDWIDTH_STEP);
+    const [bandwidthAvailable, setBandwidthAvailable] = useState(true);
+    const bandwidthKbps = bandwidthAvailable && bandwidthStep < OPEN_BANDWIDTH_STEP ? 320 + 8 * bandwidthStep : null;
+    const bandwidthReadout = bandwidthKbps === null ? "Open" : `${bandwidthKbps} kbps`;
+
+    function selectCity(code: string, enable: boolean) {
+        setSelected(current => {
+            const next = new Set(current);
+            if (enable) next.add(code);
+            else next.delete(code);
+            return next;
+        });
+    }
+
     const engineRef = useRef<AudioEngine | null>(null);
     const inputDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const outputDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const infoDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const [status, setStatus] = useState(INITIAL_STATUS);
     const [inputLevel, setInputLevelState] = useState(0);
-    const [wetDry, setWetDryState] = useState(50);
+    const [wetDry, setWetDryState] = useState(atlas ? 70 : 50);
     const [enabledTaps, setEnabledTaps] = useState(INITIAL_TAP_ENABLED);
     const [tapMetrics, setTapMetrics] = useState(INITIAL_TAP_METRICS);
     const [inputDialogOpen, setInputDialogOpen] = useState(false);
@@ -63,10 +91,26 @@ export function SharkbiteApp() {
         setInputMonitorLevel((currentLevel) => (Math.abs(currentLevel - level) < 0.015 ? currentLevel : level));
     }, []);
 
+    const measurements = useMeasurements(selected, status.running, atlas);
+    const listenerLocation = useListenerLocation(atlas);
+
+    useEffect(() => {
+        if (status.running) updateReturns.current?.(selected, feedback, measurements, feedbackStopped, bandwidthKbps);
+    }, [status.running, selected, feedback, measurements, feedbackStopped, bandwidthKbps]);
+
     const getEngine = useCallback(() => {
         if (!engineRef.current) {
             engineRef.current = new AudioEngine({
-                taps: TAPS,
+                taps: atlas ? [] : TAPS,
+                localReturns: atlas ? async (ctx, source, wet) => {
+                    try {
+                        await ctx.audioWorklet.addModule("/worklets/atlas-bandwidth.js");
+                        setBandwidthAvailable(true);
+                    } catch {
+                        setBandwidthAvailable(false);
+                    }
+                    updateReturns.current = createAtlasReturns(ctx, source, wet);
+                } : undefined,
                 onStatus: setStatus,
                 onTapEnabledChange: (tapId, enabled) => {
                     setEnabledTaps((current) => ({ ...current, [tapId]: enabled }));
@@ -85,7 +129,7 @@ export function SharkbiteApp() {
         }
 
         return engineRef.current;
-    }, [updateInputMonitorLevel]);
+    }, [atlas, updateInputMonitorLevel]);
 
     const {
         activeNotes,
@@ -259,8 +303,8 @@ export function SharkbiteApp() {
 
     const inputKnobStyle = {
         "--knob-rotation": `${knobValueToCssRotation(inputLevel)}deg`,
-        "--control-x": `${controlLayout.inputLevel.x}%`,
-        "--control-y": `${controlLayout.inputLevel.y}%`,
+        "--control-x": `${atlas ? 83 : controlLayout.inputLevel.x}%`,
+        "--control-y": `${atlas ? 57 : controlLayout.inputLevel.y}%`,
     } as CSSProperties;
     const inputMeterStyle = {
         ...inputKnobStyle,
@@ -268,16 +312,16 @@ export function SharkbiteApp() {
     } as CSSProperties;
     const wetDryKnobStyle = {
         "--knob-rotation": `${knobValueToCssRotation(wetDry)}deg`,
-        "--control-x": `${controlLayout.wetDry.x}%`,
-        "--control-y": `${controlLayout.wetDry.y}%`,
+        "--control-x": `${atlas ? 17 : controlLayout.wetDry.x}%`,
+        "--control-y": `${atlas ? 57 : controlLayout.wetDry.y}%`,
     } as CSSProperties;
     const logoStyle = {
-        "--control-x": `${controlLayout.logo.x}%`,
-        "--control-y": `${controlLayout.logo.y}%`,
+        "--control-x": `${atlas ? 50 : controlLayout.logo.x}%`,
+        "--control-y": `${atlas ? 31 : controlLayout.logo.y}%`,
     } as CSSProperties;
 
     return (
-        <main className={styles.shell} data-piano-open={pianoOpen ? "true" : "false"}>
+        <main className={styles.shell} data-atlas={atlas ? "true" : "false"} data-piano-open={pianoOpen ? "true" : "false"}>
             {!outputDialogOpen && status.message.startsWith("Output muted:") ? (
                 <button className={styles.outputWarning} role="alert" type="button" onClick={openOutputDialog}>
                     {status.message} Open output settings
@@ -287,63 +331,88 @@ export function SharkbiteApp() {
                 infoDialogOpen={infoDialogOpen}
                 pianoVisible={pianoVisible}
                 showInfoToggle={!startScreenVisible}
+                showPianoToggle={!atlas}
                 onOpenInfo={() => setInfoDialogOpen(true)}
                 onTogglePiano={togglePiano}
             />
-            <PedalSurface
-                controlDragState={controlDragState}
-                controlLayout={controlLayout}
-                controlMoveModeActive={controlMoveModeActive}
-                enabledTaps={enabledTaps}
-                inputDialogOpen={inputDialogOpen}
-                outputDialogOpen={outputDialogOpen}
-                inputKnobStyle={inputKnobStyle}
-                inputLevel={inputLevel}
-                inputLevelDragging={inputLevelControl.dragging}
-                inputMeterStyle={inputMeterStyle}
-                layoutGridVisible={layoutGridVisible}
-                logoStyle={logoStyle}
-                maxInputLevel={MAX_INPUT_LEVEL}
-                pedalOverlayRef={pedalOverlayRef}
-                statusRunning={status.running}
-                tapButtonCapGeometry={tapButtonCapGeometry}
-                tapButtonStatePreviewVisible={tapButtonStatePreviewVisible}
-                tapMetrics={tapMetrics}
-                wetDry={wetDry}
-                wetDryDragging={wetDryControl.dragging}
-                wetDryKnobStyle={wetDryKnobStyle}
-                onInputLevelKeyDown={inputLevelControl.handleKeyDown}
-                onInputLevelLostPointerCapture={inputLevelControl.handleLostPointerCapture}
-                onInputLevelPointerCancel={inputLevelControl.stopDrag}
-                onInputLevelPointerDown={inputLevelControl.handlePointerDown}
-                onInputLevelPointerMove={inputLevelControl.handlePointerMove}
-                onOpenInputDialog={openInputDialog}
-                onOpenOutputDialog={openOutputDialog}
-                onStartControlDrag={startControlDrag}
-                onMoveControlDrag={handleControlDragPointerMove}
-                onStopControlDrag={stopControlDrag}
-                onToggleTap={toggleTap}
-                onWetDryKeyDown={wetDryControl.handleKeyDown}
-                onWetDryLostPointerCapture={wetDryControl.handleLostPointerCapture}
-                onWetDryPointerCancel={wetDryControl.stopDrag}
-                onWetDryPointerDown={wetDryControl.handlePointerDown}
-                onWetDryPointerMove={wetDryControl.handlePointerMove}
-            />
+            <div className={styles.performanceGroup}>
+                <PedalSurface
+                    controlDragState={controlDragState}
+                    controlLayout={controlLayout}
+                    controlMoveModeActive={controlMoveModeActive}
+                    hideTaps={atlas}
+                    showControlValues={atlas}
+                    enabledTaps={enabledTaps}
+                    inputDialogOpen={inputDialogOpen}
+                    outputDialogOpen={outputDialogOpen}
+                    inputKnobStyle={inputKnobStyle}
+                    inputLevel={inputLevel}
+                    inputLevelDragging={inputLevelControl.dragging}
+                    inputMeterStyle={inputMeterStyle}
+                    layoutGridVisible={layoutGridVisible}
+                    logoStyle={logoStyle}
+                    maxInputLevel={MAX_INPUT_LEVEL}
+                    pedalOverlayRef={pedalOverlayRef}
+                    statusRunning={status.running}
+                    tapButtonCapGeometry={tapButtonCapGeometry}
+                    tapButtonStatePreviewVisible={tapButtonStatePreviewVisible}
+                    tapMetrics={tapMetrics}
+                    wetDry={wetDry}
+                    wetDryDragging={wetDryControl.dragging}
+                    wetDryKnobStyle={wetDryKnobStyle}
+                    onInputLevelKeyDown={inputLevelControl.handleKeyDown}
+                    onInputLevelLostPointerCapture={inputLevelControl.handleLostPointerCapture}
+                    onInputLevelPointerCancel={inputLevelControl.stopDrag}
+                    onInputLevelPointerDown={inputLevelControl.handlePointerDown}
+                    onInputLevelPointerMove={inputLevelControl.handlePointerMove}
+                    onOpenInputDialog={openInputDialog}
+                    onOpenOutputDialog={openOutputDialog}
+                    onStartControlDrag={startControlDrag}
+                    onMoveControlDrag={handleControlDragPointerMove}
+                    onStopControlDrag={stopControlDrag}
+                    onToggleTap={toggleTap}
+                    onWetDryKeyDown={wetDryControl.handleKeyDown}
+                    onWetDryLostPointerCapture={wetDryControl.handleLostPointerCapture}
+                    onWetDryPointerCancel={wetDryControl.stopDrag}
+                    onWetDryPointerDown={wetDryControl.handlePointerDown}
+                    onWetDryPointerMove={wetDryControl.handlePointerMove}
+                >
+                    {atlas && <>
+                        <AtlasKnob label="Feedback" value={feedback} maximum={MAX_FEEDBACK} readout={`${feedback}%`}
+                            left="39%" onChange={setFeedback}>
+                            <FeedbackStopButton disabled={!status.running} pressed={feedbackStopped} onChange={setFeedbackStopped} />
+                        </AtlasKnob>
+                        <AtlasKnob label="Bandwidth" value={bandwidthStep} maximum={OPEN_BANDWIDTH_STEP}
+                            readout={bandwidthAvailable ? bandwidthReadout : "Unavailable"} left="61%"
+                            disabled={!bandwidthAvailable} onChange={setBandwidthStep} />
+                    </>}
+                </PedalSurface>
 
-            <PianoPanel
-                activeNotes={activeNotes}
-                disabled={!status.running}
-                maxOctave={SYNTH_MAX_OCTAVE}
-                minOctave={SYNTH_MIN_OCTAVE}
-                octave={synthOctave}
-                pianoVisible={pianoVisible}
-                wave={synthWave}
-                waves={SYNTH_WAVES}
-                onNoteOff={handleNoteOff}
-                onNoteOn={handleNoteOn}
-                onOctaveChange={updateSynthOctave}
-                onWaveChange={updateSynthWave}
-            />
+                <PianoPanel
+                    activeNotes={activeNotes}
+                    disabled={!status.running}
+                    maxOctave={SYNTH_MAX_OCTAVE}
+                    minOctave={SYNTH_MIN_OCTAVE}
+                    octave={synthOctave}
+                    pianoVisible={pianoVisible}
+                    wave={synthWave}
+                    waves={SYNTH_WAVES}
+                    onNoteOff={handleNoteOff}
+                    onNoteOn={handleNoteOn}
+                    onOctaveChange={updateSynthOctave}
+                    onWaveChange={updateSynthWave}
+                />
+            </div>
+
+            {atlas && (
+                <DestinationMap
+                    selected={selected}
+                    measurements={measurements}
+                    running={status.running}
+                    origin={listenerLocation}
+                    select={selectCity}
+                />
+            )}
 
             {ENABLE_INPUT_AREA_HELPER ? (
                 <InputAreaHelperPanel
@@ -396,7 +465,7 @@ export function SharkbiteApp() {
             ) : null}
 
             {infoDialogOpen ? (
-                <MoreInfoDialog closeButtonRef={infoDialogCloseRef} onClose={() => setInfoDialogOpen(false)} />
+                <MoreInfoDialog atlas={atlas} closeButtonRef={infoDialogCloseRef} onClose={() => setInfoDialogOpen(false)} />
             ) : null}
 
             {startScreenVisible ? <StartScreen startingAudio={startingAudio || !inputsReady || !outputsReady} onStart={() => void startFromSplash()} /> : null}
