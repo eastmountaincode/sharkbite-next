@@ -46,7 +46,7 @@ export function MoreInfoDialog({ atlas = false, closeButtonRef, onClose }: MoreI
             Sharkbite is a website that turns the internet into a delay pedal.
           </p>
           {atlas ? <p>
-            Sharkbite pings AWS and DigitalOcean servers in cities around the world.
+            Sharkbite pings servers in cities around the world.
             The longer a ping takes to get there and back, the longer the delay between echoes.
           </p> : <p>
             Audio signal is sent to DigitalOcean servers in different cities, and back to you. Depending on how far you
