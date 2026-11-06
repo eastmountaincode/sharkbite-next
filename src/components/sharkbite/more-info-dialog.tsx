@@ -48,6 +48,7 @@ export function MoreInfoDialog({ atlas = false, closeButtonRef, onClose }: MoreI
           {atlas ? <p>
             Your browser measures round trips to servers in the cities shown. Those live HTTPS timings set the delay;
             your audio stays on your device. Connection setup is discarded, but HTTP processing still adds overhead.
+            Bandwidth limits a simulated audio stream for each city, where late pings can make more chunks drop out.
             Feedback above 100% builds into saturated repeats.
           </p> : <p>
             Audio signal is sent to DigitalOcean servers in different cities, and back to you. Depending on how far you

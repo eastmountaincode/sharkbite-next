@@ -60,7 +60,9 @@ export async function measureDestination(
                 const sorted = [...samples].sort((a, b) => a - b);
                 const middle = Math.floor(sorted.length / 2);
                 last = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-                publish({ ms: last, unavailable: false, live: !options.once });
+                const reading: Measurement = { ms: last, unavailable: false, live: !options.once };
+                if (reading.live) reading.excessMs = ms - sorted[0];
+                publish(reading);
                 if (options.once && samples.length === 3) return;
             }
             // Aim for four requests per second, including the round trip.

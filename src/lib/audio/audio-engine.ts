@@ -42,7 +42,7 @@ type TapRuntime = TapConfig & {
 
 type AudioEngineOptions = {
   taps: TapConfig[];
-  localReturns?: (ctx: AudioContext, source: GainNode, wet: GainNode) => void;
+  localReturns?: (ctx: AudioContext, source: GainNode, wet: GainNode) => void | Promise<void>;
   onStatus: (status: EngineStatus) => void;
   onTapEnabledChange: (id: TapId, enabled: boolean) => void;
   onTapMetrics: (id: TapId, metrics: TapMetricsUpdate) => void;
@@ -191,7 +191,7 @@ export class AudioEngine {
     this.synthGain.connect(this.sourceBus);
 
     if (this.localReturns) {
-        this.localReturns(this.ctx, this.sourceBus, this.wetGain);
+        await this.localReturns(this.ctx, this.sourceBus, this.wetGain);
     } else {
         await Promise.all([
           this.ctx.audioWorklet.addModule("/worklets/capture-processor.js?v=3"),

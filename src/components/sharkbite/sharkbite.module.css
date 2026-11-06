@@ -1184,18 +1184,17 @@
   cursor: pointer;
 }
 
-.feedbackPosition {
-    left: 50%;
+.atlasKnob {
     position: absolute;
     top: var(--atlas-controls-y);
     width: 13%;
 }
-.feedbackPosition .knobControl {
+.atlasKnob .knobControl {
     left: 0;
     top: 0;
     width: 100%;
 }
-.feedbackPosition .jackLabel {
+.atlasKnob .jackLabel {
     left: 0;
     top: 8.57cqw;
     transform: translate(-50%, -50%) rotate(-1deg);
@@ -1233,7 +1232,7 @@
     transform: scale(1.15);
 }
 .knobValue,
-.feedbackValue {
+.atlasKnobValue {
     position: absolute;
     transform: translateX(-50%);
     font: 400 clamp(11px, 2.5cqw, 18px)/1 var(--font-botch), var(--font-hf-lorflo), Helvetica, Arial, sans-serif;
@@ -1244,9 +1243,10 @@
     top: calc(var(--atlas-controls-y) + 10.8cqw);
     left: var(--control-x);
 }
-.feedbackValue {
+.atlasKnobValue {
     top: 10.8cqw;
     left: 0;
+    white-space: nowrap;
 }
 @media (max-width: 760px) {
     .shell[data-atlas="true"] {
