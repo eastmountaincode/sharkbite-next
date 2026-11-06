@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import webAudioEngine from "web-audio-engine";
 
@@ -13,52 +12,6 @@ const { destinations } = await import(config);
 const { createAtlasReturns } = await import(encode(compile("routes").replace('"./destinations"', JSON.stringify(config))));
 const { createOutputPeakGuard } = await import(encode(compile("output-peak-guard", "../src/lib/audio/")));
 const rate = 48000;
-
-// Run the production processor at audio-block boundaries, including hardware
-// rates that do not divide evenly into 128-sample blocks.
-const bandwidthSource = fs.readFileSync(new URL("../public/worklets/atlas-bandwidth.js", import.meta.url), "utf8");
-for (const sampleRate of [44100, 48000, 96000]) {
-    let Processor;
-    runInNewContext(bandwidthSource, {
-        sampleRate,
-        AudioWorkletProcessor: class {},
-        registerProcessor: (_name, implementation) => { Processor = implementation; },
-    });
-    const processor = new Processor();
-    const block = new Float32Array(128);
-    const parameters = { kbps: [0], excessMs: [0] };
-    const configure = (kbps, excessMs) => {
-        parameters.kbps[0] = kbps;
-        parameters.excessMs[0] = excessMs;
-    };
-    const processBlock = () => processor.process([], [[block]], parameters);
-    configure(560, 0);
-    const frameSize = Math.round(sampleRate * 0.02);
-    let dropped = 0;
-    for (let start = 0; start < 280 * frameSize; start += block.length) {
-        processBlock();
-        for (let i = 0; i < block.length && start + i < 280 * frameSize; i++) {
-            if ((start + i) % frameSize === Math.floor(frameSize / 2) && block[i] === -1) dropped++;
-        }
-    }
-    assert.equal(dropped, 77, "560 kbps must match the listening sketch at each hardware sample rate");
-    configure(0, 50);
-    for (let i = 0; i < 4; i++) processBlock();
-    assert(block.every(x => x === 0), "Open must restore unity even after a late packet");
-    configure(800, 0);
-    for (let i = 0; i < 24; i++) {
-        processBlock();
-        assert(block.every(x => x === 0), "A steady route at 800 kbps must deliver all chunks");
-    }
-    configure(800, 45);
-    let missedLatePacket = false;
-    for (let i = 0; i < 40; i++) {
-        processBlock();
-        if (block.some(x => x === -1)) missedLatePacket = true;
-    }
-    assert(missedLatePacket, "A late live ping must be able to change which chunks arrive");
-}
-console.log("PASS: bandwidth matches the 560 kbps sketch, responds to late pings, and bypasses at Open");
 
 async function render(selected, feedback, measurements, duration = 1, guardOutput = false) {
     const ctx = new webAudioEngine.OfflineAudioContext(1, rate * duration, rate);
@@ -276,8 +229,6 @@ try {
     assert.deepEqual(published[0], { ms: null, unavailable: false, live: false });
     assert.equal(published[1].ms, 120, "Connection warmup must not become the delay");
     assert.equal(published[1].live, true, "Live state must begin with the first warmed continuous sample");
-    assert.equal(published[1].excessMs, 0, "Connection warmup must not influence packet loss");
-    assert.equal(published[2].excessMs, 80, "A 200 ms ping after a 120 ms ping must expose the extra transit time");
     assert.deepEqual(published.at(-1), { ms: 120, unavailable: true, live: false }, "Network loss must preserve the delay without calling it live");
     const requestsAfterAbort = request;
     await measureDestination(destinations[0], controller.signal, () => {});

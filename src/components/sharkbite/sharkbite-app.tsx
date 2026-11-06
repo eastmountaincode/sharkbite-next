@@ -9,7 +9,6 @@ import {
 } from "react";
 import { TAPS, type TapId } from "@/config/taps";
 import { AudioEngine } from "@/lib/audio/audio-engine";
-import { AtlasKnob } from "./atlas-knob";
 import { FeedbackStopButton } from "./feedback-stop-button";
 import { InputAreaHelperPanel } from "./input-area-helper-panel";
 import { InputSourceDialog } from "./input-source-dialog";
@@ -50,18 +49,16 @@ import { useKnobControl } from "./use-knob-control";
 import { usePedalEditor } from "./use-pedal-editor";
 import { useSynthController } from "./use-synth-controller";
 
-// The finite settings cover 320–800 kbps in 8 kbps steps, followed by Open.
-const OPEN_BANDWIDTH_STEP = 61;
-
 export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
     const [selected, setSelected] = useState(new Set(["TYO"]));
     const [feedback, setFeedback] = useState(99);
     const [feedbackStopped, setFeedbackStopped] = useState(false);
     const updateReturns = useRef<ReturnType<typeof createAtlasReturns> | null>(null);
-    const [bandwidthStep, setBandwidthStep] = useState(OPEN_BANDWIDTH_STEP);
-    const [bandwidthAvailable, setBandwidthAvailable] = useState(true);
-    const bandwidthKbps = bandwidthAvailable && bandwidthStep < OPEN_BANDWIDTH_STEP ? 320 + 8 * bandwidthStep : null;
-    const bandwidthReadout = bandwidthKbps === null ? "Open" : `${bandwidthKbps} kbps`;
+    const feedbackControl = useKnobControl({
+        value: feedback,
+        maxValue: MAX_FEEDBACK,
+        onChange: value => setFeedback(Math.max(0, Math.min(MAX_FEEDBACK, Math.round(value)))),
+    });
 
     function selectCity(code: string, enable: boolean) {
         setSelected(current => {
@@ -95,20 +92,14 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
     const listenerLocation = useListenerLocation(atlas);
 
     useEffect(() => {
-        if (status.running) updateReturns.current?.(selected, feedback, measurements, feedbackStopped, bandwidthKbps);
-    }, [status.running, selected, feedback, measurements, feedbackStopped, bandwidthKbps]);
+        if (status.running) updateReturns.current?.(selected, feedback, measurements, feedbackStopped);
+    }, [status.running, selected, feedback, measurements, feedbackStopped]);
 
     const getEngine = useCallback(() => {
         if (!engineRef.current) {
             engineRef.current = new AudioEngine({
                 taps: atlas ? [] : TAPS,
-                localReturns: atlas ? async (ctx, source, wet) => {
-                    try {
-                        await ctx.audioWorklet.addModule("/worklets/atlas-bandwidth.js");
-                        setBandwidthAvailable(true);
-                    } catch {
-                        setBandwidthAvailable(false);
-                    }
+                localReturns: atlas ? (ctx, source, wet) => {
                     updateReturns.current = createAtlasReturns(ctx, source, wet);
                 } : undefined,
                 onStatus: setStatus,
@@ -303,7 +294,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
 
     const inputKnobStyle = {
         "--knob-rotation": `${knobValueToCssRotation(inputLevel)}deg`,
-        "--control-x": `${atlas ? 83 : controlLayout.inputLevel.x}%`,
+        "--control-x": `${atlas ? 75 : controlLayout.inputLevel.x}%`,
         "--control-y": `${atlas ? 57 : controlLayout.inputLevel.y}%`,
     } as CSSProperties;
     const inputMeterStyle = {
@@ -312,7 +303,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
     } as CSSProperties;
     const wetDryKnobStyle = {
         "--knob-rotation": `${knobValueToCssRotation(wetDry)}deg`,
-        "--control-x": `${atlas ? 17 : controlLayout.wetDry.x}%`,
+        "--control-x": `${atlas ? 25 : controlLayout.wetDry.x}%`,
         "--control-y": `${atlas ? 57 : controlLayout.wetDry.y}%`,
     } as CSSProperties;
     const logoStyle = {
@@ -377,15 +368,18 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
                     onWetDryPointerDown={wetDryControl.handlePointerDown}
                     onWetDryPointerMove={wetDryControl.handlePointerMove}
                 >
-                    {atlas && <>
-                        <AtlasKnob label="Feedback" value={feedback} maximum={MAX_FEEDBACK} readout={`${feedback}%`}
-                            left="39%" onChange={setFeedback}>
-                            <FeedbackStopButton disabled={!status.running} pressed={feedbackStopped} onChange={setFeedbackStopped} />
-                        </AtlasKnob>
-                        <AtlasKnob label="Bandwidth" value={bandwidthStep} maximum={OPEN_BANDWIDTH_STEP}
-                            readout={bandwidthAvailable ? bandwidthReadout : "Unavailable"} left="61%"
-                            disabled={!bandwidthAvailable} onChange={setBandwidthStep} />
-                    </>}
+                    {atlas && <div className={styles.feedbackPosition} style={{ "--knob-rotation": `${knobValueToCssRotation(feedback / MAX_FEEDBACK * 100)}deg` } as CSSProperties}>
+                        <div className={styles.knobControl} role="slider" aria-label="Feedback" tabIndex={0}
+                            aria-valuemin={0} aria-valuemax={MAX_FEEDBACK} aria-valuenow={feedback} aria-valuetext={`${feedback}%`}
+                            onKeyDown={feedbackControl.handleKeyDown} onPointerDown={feedbackControl.handlePointerDown}
+                            onPointerMove={feedbackControl.handlePointerMove} onPointerCancel={feedbackControl.stopDrag}
+                            onPointerUp={feedbackControl.stopDrag} onLostPointerCapture={feedbackControl.handleLostPointerCapture}>
+                            <span aria-hidden="true" className={styles.knob} />
+                        </div>
+                        <FeedbackStopButton disabled={!status.running} pressed={feedbackStopped} onChange={setFeedbackStopped} />
+                        <span className={styles.jackLabel}>Feedback</span>
+                        <output className={styles.feedbackValue}>{feedback}%</output>
+                    </div>}
                 </PedalSurface>
 
                 <PianoPanel

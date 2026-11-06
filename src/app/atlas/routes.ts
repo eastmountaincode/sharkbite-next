@@ -1,4 +1,4 @@
-import { destinations, MAX_DELAY_MS, MAX_FEEDBACK, type Measurement, type Measurements } from "./destinations";
+import { destinations, MAX_DELAY_MS, MAX_FEEDBACK, type Measurements } from "./destinations";
 
 export function createAtlasReturns(ctx: BaseAudioContext, source: GainNode, wet: GainNode) {
     const curve = new Float32Array(4097);
@@ -9,7 +9,6 @@ export function createAtlasReturns(ctx: BaseAudioContext, source: GainNode, wet:
         const send = ctx.createGain();
         const input = ctx.createGain();
         const mix = ctx.createGain();
-        const packetGain = ctx.createGain();
         const feedback = ctx.createGain();
         const saturate = ctx.createWaveShaper();
         const level = ctx.createGain();
@@ -22,46 +21,19 @@ export function createAtlasReturns(ctx: BaseAudioContext, source: GainNode, wet:
         source.connect(send).connect(input);
         delays.forEach((delay, i) => input.connect(delay).connect(fades[i]).connect(mix));
         // Saturation bounds the loop even above unity feedback; repeats can build up.
-        mix.connect(packetGain);
-        packetGain.connect(feedback).connect(saturate).connect(input);
-        packetGain.connect(level).connect(wet);
-        return {
-            city, send, delays, fades, feedback, level, packetGain, head: 0, ms: null as number | null,
-            packetControl: null as AudioWorkletNode | null,
-            capacity: null as number | null,
-            reading: undefined as Measurement | undefined,
-        };
+        mix.connect(feedback).connect(saturate).connect(input);
+        mix.connect(level).connect(wet);
+        return { city, send, delays, fades, feedback, level, head: 0, ms: null as number | null };
     });
 
-    return (selected: ReadonlySet<string>, feedback: number, measurements: Measurements,
-        feedbackStopped = false, bandwidthKbps: number | null = null) => {
+    return (selected: ReadonlySet<string>, feedback: number, measurements: Measurements, feedbackStopped = false) => {
         const ready = (code: string) => {
             const ms = measurements[code]?.ms;
             return selected.has(code) && ms != null && Number.isFinite(ms) && ms > 0 && ms < MAX_DELAY_MS;
         };
         for (const tap of taps) {
             const on = ready(tap.city.code);
-            const reading = measurements[tap.city.code];
-            const ms = reading?.ms;
-            const capacity = on ? bandwidthKbps : null;
-            if (capacity !== null && !tap.packetControl) {
-                tap.packetControl = new AudioWorkletNode(ctx, "atlas-bandwidth", {
-                    numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1],
-                });
-                tap.packetControl.connect(tap.packetGain.gain);
-            }
-            if (tap.packetControl && (capacity !== tap.capacity || (capacity !== null && tap.reading !== reading))) {
-                const now = ctx.currentTime;
-                const parameters = tap.packetControl.parameters;
-                parameters.get("kbps")!.value = capacity ?? 0;
-                const excess = parameters.get("excessMs")!;
-                excess.cancelScheduledValues(now);
-                excess.setValueAtTime(Math.min(50, reading?.live ? reading.excessMs ?? 0 : 0), now);
-                // Each live probe briefly tightens its own playout deadline.
-                excess.setTargetAtTime(0, now, 0.20);
-                tap.capacity = capacity;
-                tap.reading = reading;
-            }
+            const ms = measurements[tap.city.code]?.ms;
             if (on && ms != null && (tap.ms === null || Math.abs(tap.ms - ms) >= 0.5)) {
                 if (tap.ms === null) {
                     tap.delays.forEach(delay => { delay.delayTime.value = ms / 1000; });
