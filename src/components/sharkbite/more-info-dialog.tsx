@@ -46,10 +46,8 @@ export function MoreInfoDialog({ atlas = false, closeButtonRef, onClose }: MoreI
             Sharkbite is a website that turns the internet into a delay pedal.
           </p>
           {atlas ? <p>
-            Your browser measures round trips to servers in the cities shown. Those live HTTPS timings set the delay;
-            your audio stays on your device. Connection setup is discarded, but HTTP processing still adds overhead.
-            Bandwidth limits a simulated audio stream for each city, where late pings can make more chunks drop out.
-            Feedback above 100% builds into saturated repeats.
+            Sharkbite pings AWS and DigitalOcean servers in cities around the world.
+            The longer a ping takes to get there and back, the longer the delay between echoes.
           </p> : <p>
             Audio signal is sent to DigitalOcean servers in different cities, and back to you. Depending on how far you
             are away from these servers, you will hear a different delay effect; the delay time comes from the length of
