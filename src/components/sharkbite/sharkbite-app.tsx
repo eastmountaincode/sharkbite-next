@@ -51,7 +51,7 @@ import { useSynthController } from "./use-synth-controller";
 
 export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
     const [selected, setSelected] = useState(new Set(["TYO"]));
-    const [feedback, setFeedback] = useState(35);
+    const [feedback, setFeedback] = useState(99);
     const [feedbackStopped, setFeedbackStopped] = useState(false);
     const updateReturns = useRef<ReturnType<typeof createAtlasReturns> | null>(null);
     const feedbackControl = useKnobControl({
@@ -75,7 +75,7 @@ export function SharkbiteApp({ atlas = false }: { atlas?: boolean }) {
     const infoDialogCloseRef = useRef<HTMLButtonElement | null>(null);
     const [status, setStatus] = useState(INITIAL_STATUS);
     const [inputLevel, setInputLevelState] = useState(0);
-    const [wetDry, setWetDryState] = useState(50);
+    const [wetDry, setWetDryState] = useState(atlas ? 70 : 50);
     const [enabledTaps, setEnabledTaps] = useState(INITIAL_TAP_ENABLED);
     const [tapMetrics, setTapMetrics] = useState(INITIAL_TAP_METRICS);
     const [inputDialogOpen, setInputDialogOpen] = useState(false);
